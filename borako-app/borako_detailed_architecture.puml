@@ -1,0 +1,275 @@
+@startuml
+skinparam classAttributeIconSize 0
+' skinparam linetype ortho ' Disabled to prevent OOM
+skinparam handwritten false
+
+title Borako Detailed Architecture
+
+' --- Entry Points ---
+package "Entry Points" {
+    object "main.tsx" as Main
+    class "App.tsx" as App {
+        +App(): JSX.Element
+    }
+}
+
+' --- Lib ---
+package "Lib" {
+    class Utils {
+        +cn(...inputs: ClassValue[]): string
+    }
+}
+
+' --- Engine ---
+package "Engine" {
+    package "Types" {
+        enum Suit {
+            CLUBS
+            DIAMONDS
+            SPADES
+            HEARTS
+        }
+        enum Rank {
+            A, 2..10, J, Q, K
+        }
+        enum MeldType {
+            RUN
+            SET
+        }
+        enum GamePhase {
+            LOBBY
+            PLAYING
+            ROUND_END
+            GAME_END
+        }
+        enum TurnPhase {
+            WAITING_FOR_DRAW
+            PLAYING
+            DISCARDING
+        }
+
+        interface Card {
+            +id: string
+            +suit: Suit
+            +rank: Rank
+            +isDevilJoker?: boolean
+            +value: number
+        }
+
+        interface Meld {
+            +id: string
+            +type: MeldType
+            +cards: Card[]
+            +clean?: boolean
+            +wildCount?: number
+            +suit?: Suit
+            +rank?: Rank
+        }
+
+        interface Player {
+            +id: string
+            +name: string
+            +hand: Card[]
+            +teamId: 'A' | 'B'
+            +isHost: boolean
+        }
+
+        interface Team {
+            +id: 'A' | 'B'
+            +melds: Meld[]
+            +mourPile: Card[]
+            +hasTakenMour: boolean
+            +totalScore: number
+            +roundScore: number
+        }
+
+        interface GameState {
+            +phase: GamePhase
+            +roundNumber: number
+            +deck: Card[]
+            +discardPile: Card[]
+            +players: Player[]
+            +teams: { A: Team, B: Team }
+            +currentTurnPlayerId: string | null
+            +turnPhase: TurnPhase
+            +hasSwept: boolean
+            +logs: string[]
+        }
+    }
+
+    class Deck {
+        +createGameDeck(): Card[]
+        -createSingleDeck(index: number): Card[]
+        -shuffle(cards: Card[]): Card[]
+        -CARD_VALUES: Record<Rank, number>
+    }
+
+    class Validator {
+        +validateMeld(cards: Card[]): ValidationResult
+        -solveRun(cards: Card[], suit: Suit): ValidationResult | null
+        -trySolveSequence(naturals, wilds, aceValue): Result | null
+        -sortRunCards(naturals, wilds): Card[]
+        -isWild(card: Card): boolean
+        -getRankValues(rank: Rank): number[]
+    }
+
+    class Scoring {
+        +calculateMeldBonus(meld: Meld): number
+        +calculateTeamRoundScore(melds, hand, mour, goOut): ScoreResult
+    }
+
+    class GameReducer {
+        +INITIAL_STATE: GameState
+        +gameReducer(state: GameState, action: GameAction): GameState
+        -- Actions --
+        +INIT_GAME
+        +JOIN_GAME
+        +START_GAME
+        +DRAW_CARD
+        +SWEEP_PILE
+        +MELD_CARDS
+        +ADD_TO_MELD
+        +DISCARD_CARD
+        +REORDER_HAND
+        +KICK_PLAYER
+        +NEXT_ROUND
+        +RESET_GAME
+        +SYNC_STATE
+    }
+}
+
+' --- Network ---
+package "Network" {
+    interface Message {
+        +type: 'STATE_UPDATE' | 'ACTION'
+        +payload: any
+    }
+
+    class ConnectionManager {
+        -peer: Peer | null
+        -connections: DataConnection[]
+        -myId: string
+        -onMessage: MessageCallback | null
+        +initialize(id?: string): Promise<string>
+        +connect(hostId: string): Promise<void>
+        +setMessageHandler(callback: MessageCallback)
+        +broadcast(msg: Message)
+        +sendToHost(msg: Message)
+        +destroy()
+        +getId(): string
+        -handleConnection(conn: DataConnection)
+    }
+
+    object "connection" as ConnectionInstance <<Singleton>>
+}
+
+' --- Hooks ---
+package "Hooks" {
+    class useGame {
+        +state: GameState
+        +dispatch: Dispatch<GameAction>
+        +peerId: string
+        +isConnected: boolean
+        +actions: GameActions
+        -- Exposed Actions --
+        +initGame(hostName)
+        +joinGame(hostId, name)
+        +startGame()
+        +drawCard(playerId)
+        +sweepPile(playerId)
+        +meldCards(playerId, cards)
+        +addToMeld(playerId, meldId, cards)
+        +discardCard(playerId, cardId)
+        +reorderHand(playerId, newOrder)
+        +kickPlayer(playerId)
+        +addBot(name)
+        +nextRound()
+        +resetGame()
+        -- Internals --
+        -handleAction(action)
+        -isHost(): boolean
+    }
+}
+
+' --- Components ---
+package "Components" {
+    package "UI" {
+        class Button {
+            +variant: string
+            +size: string
+            +asChild: boolean
+        }
+    }
+
+    package "Game" {
+        class CardComponent <<(C, #54a0ff)>> {
+            +card: Card
+            +isFaceDown: boolean
+            +isSelected: boolean
+            +onClick()
+            -- Logic --
+            -getRankName(r)
+            -renders: motion.div
+        }
+
+        class GameBoard <<(C, #54a0ff)>> {
+            -state: GameState
+            -actions: GameActions
+            -peerId: string
+            -selectedCards: string[]
+            -selectedMeldId: string | null
+            -view: 'WELCOME' | 'JOIN'
+            -- Methods --
+            -handleHost()
+            -handleJoin()
+            -toggleSelect(cardId)
+            -toggleMeldSelect(meldId)
+            -- Conditional Renders --
+            +RenderGameEnd()
+            +RenderRoundEnd()
+            +RenderWelcome()
+            +RenderLobby()
+            +RenderHUD()
+            +RenderTable()
+            +RenderHand()
+        }
+    }
+}
+
+' --- Relationships ---
+
+' Entry
+Main --> App
+App --> GameBoard
+
+' Components & Hooks
+GameBoard --> useGame : uses
+GameBoard --> CardComponent : renders
+GameBoard --> Button : renders
+GameBoard --> Scoring : uses (calc bonuses)
+CardComponent --> Utils : uses (cn)
+Button --> Utils : uses (cn)
+
+' Hooks Logic
+useGame --> GameReducer : useReducer()
+useGame --> ConnectionInstance : interacts with
+useGame --> ConnectionManager : uses types
+
+' Network
+ConnectionInstance --|> ConnectionManager : instance of
+ConnectionManager .> Message : uses
+
+' Engine Dependencies
+GameReducer --> Deck : uses
+GameReducer --> Validator : uses
+GameReducer --> Scoring : uses
+GameReducer ..> Types : implements
+
+' Data Flow
+Types <.. Deck : uses
+Types <.. Validator : uses
+Types <.. Scoring : uses
+Types <.. CardComponent : uses type
+Types <.. GameBoard : uses type
+
+@enduml

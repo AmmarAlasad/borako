@@ -36,6 +36,27 @@ export const INITIAL_STATE: GameState = {
     logs: [],
 };
 
+// Helper to auto-sort hand: Suit (Clubs, Diamonds, Spades, Hearts) -> Rank (A, K..2)
+function sortHand(cards: Card[]): Card[] {
+    const suitOrder: Record<string, number> = { 'CLUBS': 0, 'DIAMONDS': 1, 'SPADES': 2, 'HEARTS': 3 };
+    const rankOrder: Record<string, number> = {
+        'A': 14, 'K': 13, 'Q': 12, 'J': 11, '10': 10, '9': 9, '8': 8, '7': 7, '6': 6, '5': 5, '4': 4, '3': 3, '2': 2
+    };
+
+    return [...cards].sort((a, b) => {
+        // 1. Sort by Suit
+        const suitDiff = suitOrder[a.suit] - suitOrder[b.suit];
+        if (suitDiff !== 0) return suitDiff;
+
+        // 2. Sort by Rank (Desc)
+        // Jokers: Let's put them at the very start (left). Wilds are special.
+        const valA = a.isDevilJoker ? 100 : rankOrder[a.rank];
+        const valB = b.isDevilJoker ? 100 : rankOrder[b.rank];
+
+        return valB - valA; // Descending
+    });
+}
+
 export function gameReducer(state: GameState, action: GameAction): GameState {
     switch (action.type) {
         case 'INIT_GAME': {
@@ -104,9 +125,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
             // Deal Players
             players.forEach(p => {
-                // TS might still complain if splice returns Card[] but hand is inferred.
-                // But explicit cast above helps.
-                p.hand = deck.splice(0, 11);
+                const rawHand = deck.splice(0, 11);
+                p.hand = sortHand(rawHand); // AUTO SORT ON DEAL
             });
 
             // Flip one card for discard?
@@ -142,7 +162,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
             const players = state.players.map(p => {
                 if (p.id === action.payload.playerId) {
-                    return { ...p, hand: [...p.hand, card] };
+                    return { ...p, hand: sortHand([...p.hand, card]) }; // AUTO SORT ON DRAW
                 }
                 return p;
             });
@@ -165,7 +185,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
             const players = state.players.map(p => {
                 if (p.id === action.payload.playerId) {
-                    return { ...p, hand: [...p.hand, ...discardPile] };
+                    return { ...p, hand: sortHand([...p.hand, ...discardPile]) }; // AUTO SORT ON SWEEP
                 }
                 return p;
             });
@@ -372,7 +392,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                     ...nextState.teams,
                     [player.teamId]: { ...team, mourPile: [], hasTakenMour: true }
                 };
-                nextState.players = nextState.players.map(p => p.id === player.id ? { ...p, hand: mour } : p);
+                nextState.players = nextState.players.map(p => p.id === player.id ? { ...p, hand: sortHand(mour) } : p); // AUTO SORT MOUR PICKUP
                 nextState.logs = [...nextState.logs, "Player took the Mour!"];
 
             }
@@ -428,7 +448,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             const mourA = newDeck.splice(0, 11);
             const mourB = newDeck.splice(0, 11);
 
-            const players = state.players.map(p => ({ ...p, hand: newDeck.splice(0, 11) }));
+            const players = state.players.map(p => ({ ...p, hand: sortHand(newDeck.splice(0, 11)) })); // AUTO SORT
             const firstDiscard = newDeck.pop();
             const discardPile = firstDiscard ? [firstDiscard] : [];
 
@@ -495,3 +515,4 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             return state;
     }
 }
+
