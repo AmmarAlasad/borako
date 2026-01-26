@@ -71,6 +71,9 @@ export function useGame() {
             const botId = `bot-${Math.random().toString(36).substr(2, 9)}`;
             dispatch({ type: 'JOIN_GAME', payload: { playerId: botId, name } });
         },
+        kickPlayer: (playerId: string) => {
+            handleAction({ type: 'KICK_PLAYER', payload: { playerId } });
+        },
         startGame: () => {
             if (isHost()) dispatch({ type: 'START_GAME' });
         },
@@ -91,6 +94,12 @@ export function useGame() {
         },
         addToMeld: (playerId: string, meldId: string, cards: Card[]) => {
             handleAction({ type: 'ADD_TO_MELD', payload: { playerId, meldId, cards } });
+        },
+        nextRound: () => {
+            if (isHost()) dispatch({ type: 'NEXT_ROUND' });
+        },
+        resetGame: () => {
+            if (isHost()) dispatch({ type: 'RESET_GAME' });
         },
     }), [dispatch, peerId, state.players]);
 

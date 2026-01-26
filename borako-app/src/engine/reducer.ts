@@ -2,6 +2,7 @@
 import type { GameState, Card, Meld } from './types';
 import { createGameDeck } from './deck';
 import { validateMeld } from './validator';
+import { calculateTeamRoundScore } from './scoring';
 import { v4 as uuidv4 } from 'uuid';
 
 export type GameAction =
@@ -14,6 +15,9 @@ export type GameAction =
     | { type: 'ADD_TO_MELD'; payload: { playerId: string; meldId: string; cards: Card[] } }
     | { type: 'DISCARD_CARD'; payload: { playerId: string; cardId: string } }
     | { type: 'REORDER_HAND'; payload: { playerId: string; newOrder: Card[] } }
+    | { type: 'KICK_PLAYER'; payload: { playerId: string } }
+    | { type: 'NEXT_ROUND' }
+    | { type: 'RESET_GAME' }
     | { type: 'SYNC_STATE'; payload: GameState };
 
 export const INITIAL_STATE: GameState = {
@@ -64,6 +68,24 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                         isHost: false
                     }
                 ]
+            };
+        }
+
+        case 'KICK_PLAYER': {
+            if (state.phase !== 'LOBBY') return state;
+
+            // Filter out the kicked player
+            const newPlayers = state.players.filter(p => p.id !== action.payload.playerId);
+
+            // Reassign teams to ensure ABAB balance
+            const balancedPlayers = newPlayers.map((p, index) => ({
+                ...p,
+                teamId: (index % 2 === 0 ? 'A' : 'B') as 'A' | 'B'
+            }));
+
+            return {
+                ...state,
+                players: balancedPlayers
             };
         }
 
@@ -193,6 +215,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 type: result.meldType!,
                 cards: finalCards,
                 clean: result.isClean,
+                wildCount: result.wildCount,
                 suit: result.baseSuit,
                 rank: result.baseRank
             };
@@ -269,6 +292,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 ...targetMeld,
                 cards: finalCards,
                 clean: result.isClean,
+                wildCount: result.wildCount,
                 // Suit/Rank might update if we added to a Set? No base stays same.
             };
 
@@ -351,10 +375,40 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 nextState.players = nextState.players.map(p => p.id === player.id ? { ...p, hand: mour } : p);
                 nextState.logs = [...nextState.logs, "Player took the Mour!"];
 
-                // Turn Logic:
-                // Since we discarded, turn DOES End. Next player's turn.
-                // Logic: "Continues" applies if you Meld out (without discard). 
-                // If you discard out, you are done.
+            }
+
+            // CHECK GOING OUT CONDITION (Hand Empty AND Mour Taken)
+            const hasGoneOut = newHand.length === 0 && team.hasTakenMour;
+
+            if (hasGoneOut) {
+                // ROUND END!
+                const teamA = nextState.teams.A;
+                const teamB = nextState.teams.B;
+
+                // Cards remaining in Hands for penalty
+                const handCardsA = nextState.players.filter(p => p.teamId === 'A').flatMap(p => p.hand);
+                const handCardsB = nextState.players.filter(p => p.teamId === 'B').flatMap(p => p.hand);
+
+                // Calculate Scores
+                const resultA = calculateTeamRoundScore(teamA.melds, handCardsA, teamA.hasTakenMour, player.teamId === 'A'); // Gone out bonus if A
+                const resultB = calculateTeamRoundScore(teamB.melds, handCardsB, teamB.hasTakenMour, player.teamId === 'B');
+
+                // Update Total Scores
+                const newTotalA = teamA.totalScore + resultA.totalPoints;
+                const newTotalB = teamB.totalScore + resultB.totalPoints;
+
+                // Check Game Win
+                const isGameEnd = newTotalA >= 350 || newTotalB >= 350;
+
+                nextState.teams = {
+                    A: { ...teamA, roundScore: resultA.totalPoints, totalScore: newTotalA },
+                    B: { ...teamB, roundScore: resultB.totalPoints, totalScore: newTotalB }
+                };
+
+                nextState.phase = isGameEnd ? 'GAME_END' : 'ROUND_END';
+                nextState.logs = [...nextState.logs, `Round Over! Score: A +${resultA.totalPoints}, B +${resultB.totalPoints}`];
+
+                return nextState;
             }
 
             // NEXT TURN
@@ -363,6 +417,50 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             nextState.hasSwept = false;
 
             return nextState;
+        }
+
+        case 'NEXT_ROUND': {
+            // Reset round state but keep scores and teams
+            const newDeck = createGameDeck();
+            // Rotate dealer? Usually winner starts or rotation? Let's just rotate start player index if needed but keep simple.
+
+            // Similar to START_GAME logic but keeping Scores
+            const mourA = newDeck.splice(0, 11);
+            const mourB = newDeck.splice(0, 11);
+
+            const players = state.players.map(p => ({ ...p, hand: newDeck.splice(0, 11) }));
+            const firstDiscard = newDeck.pop();
+            const discardPile = firstDiscard ? [firstDiscard] : [];
+
+            return {
+                ...state,
+                phase: 'PLAYING',
+                roundNumber: state.roundNumber + 1,
+                deck: newDeck,
+                discardPile,
+                players,
+                teams: {
+                    A: { ...state.teams.A, melds: [], mourPile: mourA, hasTakenMour: false, roundScore: 0 },
+                    B: { ...state.teams.B, melds: [], mourPile: mourB, hasTakenMour: false, roundScore: 0 }
+                },
+                currentTurnPlayerId: state.players[0].id, // Should rotate?
+                turnPhase: 'WAITING_FOR_DRAW',
+                hasSwept: false,
+                logs: [...state.logs, `Round ${state.roundNumber + 1} Started!`]
+            };
+        }
+
+        case 'RESET_GAME': {
+            const resetPlayers = state.players.map(p => ({ ...p, hand: [], isHost: p.isHost })); // Keep players
+            // Maybe actually re-run logic effectively
+            // Let's just reset stats and go back to Lobby?
+            // Or instant restart? 
+            // Usually "New Game" -> Lobby.
+            return {
+                ...INITIAL_STATE,
+                players: resetPlayers.map(p => ({ ...p, hand: [], teamId: p.teamId, isHost: p.isHost })), // Keep roster
+                phase: 'LOBBY'
+            };
         }
 
         case 'REORDER_HAND': {

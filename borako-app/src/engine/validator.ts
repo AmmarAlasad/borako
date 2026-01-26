@@ -112,8 +112,11 @@ export function validateMeld(cards: Card[]): ValidationResult {
             // Wild count: All Jokers + (2s if target is not 2).
             let wildCount = 0;
             cards.forEach(c => {
-                if (c.isDevilJoker) wildCount++;
-                if (c.rank === '2' && targetRank !== '2') wildCount++;
+                if (c.isDevilJoker) {
+                    wildCount++;
+                } else if (c.rank === '2' && targetRank !== '2') {
+                    wildCount++;
+                }
             });
             return { isValid: true, meldType: 'SET', baseRank: targetRank, wildCount, isClean: wildCount === 0 };
         }

@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { Card } from './Card';
 import { AnimatePresence, Reorder } from 'framer-motion';
+import { calculateMeldBonus } from '../../engine/scoring';
 
 export function GameBoard() {
     const { state, actions, peerId } = useGame();
+    const isHost = state.players.find(p => p.id === peerId)?.isHost;
     const [selectedCards, setSelectedCards] = useState<string[]>([]);
     const [selectedMeldId, setSelectedMeldId] = useState<string | null>(null);
 
@@ -34,7 +36,100 @@ export function GameBoard() {
         }
     };
 
-    // 1. Welcome Screen (No Players)
+    // 1. GAME END Screen
+    if (state.phase === 'GAME_END') {
+        const winner = state.teams.A.totalScore >= 350 ? 'TEAM A' : 'TEAM B';
+        return (
+            <div className="flex flex-col items-center justify-center h-screen bg-slate-950 text-white relative overflow-hidden z-50">
+                <div className="text-center p-12 bg-slate-900 rounded-2xl shadow-2xl border border-yellow-500/30 animate-in zoom-in spin-in-3 duration-500">
+                    <div className="text-6xl mb-4">👑</div>
+                    <h1 className="text-6xl font-black bg-gradient-to-r from-yellow-300 via-yellow-500 to-yellow-700 bg-clip-text text-transparent mb-4">
+                        {winner} WINS!
+                    </h1>
+                    <div className="flex justify-center gap-12 text-2xl font-mono mb-8">
+                        <div className="flex flex-col items-center">
+                            <span className="text-blue-400 font-bold">Team A</span>
+                            <span className="text-4xl">{state.teams.A.totalScore}</span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                            <span className="text-red-400 font-bold">Team B</span>
+                            <span className="text-4xl">{state.teams.B.totalScore}</span>
+                        </div>
+                    </div>
+                    {isHost ? (
+                        <button
+                            onClick={() => actions.resetGame()}
+                            className="bg-white text-black font-bold px-8 py-3 rounded hover:scale-105 transition-transform"
+                        >
+                            Return to Lobby
+                        </button>
+                    ) : (
+                        <div className="text-slate-400 animate-pulse">Waiting for host...</div>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    // 2. ROUND END Screen
+    if (state.phase === 'ROUND_END') {
+        return (
+            <div className="flex flex-col items-center justify-center h-screen bg-black/90 text-white relative z-50 backdrop-blur-md">
+                <div className="bg-slate-900 p-8 rounded-2xl border border-white/10 max-w-2xl w-full shadow-2xl">
+                    <h2 className="text-3xl font-bold text-center mb-8 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                        Round {state.roundNumber} Complete
+                    </h2>
+
+                    <div className="grid grid-cols-2 gap-8 mb-8">
+                        {/* Team A Stats */}
+                        <div className="bg-slate-800/50 p-6 rounded-xl border border-blue-500/20">
+                            <h3 className="text-xl font-bold text-blue-400 mb-4 border-b border-blue-500/20 pb-2">TEAM A</h3>
+                            <div className="flex justify-between items-end mb-2">
+                                <span className="text-slate-400">Round Score</span>
+                                <span className="text-2xl font-mono font-bold text-white">+{state.teams.A.roundScore}</span>
+                            </div>
+                            <div className="flex justify-between items-end">
+                                <span className="text-slate-400">Total Score</span>
+                                <span className="text-2xl font-mono font-bold text-blue-300">{state.teams.A.totalScore}</span>
+                            </div>
+                            {!state.teams.A.hasTakenMour && <div className="text-xs text-red-400 mt-2 font-bold uppercase">Penalty: No Mour (-10 pts)</div>}
+                        </div>
+
+                        {/* Team B Stats */}
+                        <div className="bg-slate-800/50 p-6 rounded-xl border border-red-500/20">
+                            <h3 className="text-xl font-bold text-red-400 mb-4 border-b border-red-500/20 pb-2">TEAM B</h3>
+                            <div className="flex justify-between items-end mb-2">
+                                <span className="text-slate-400">Round Score</span>
+                                <span className="text-2xl font-mono font-bold text-white">+{state.teams.B.roundScore}</span>
+                            </div>
+                            <div className="flex justify-between items-end">
+                                <span className="text-slate-400">Total Score</span>
+                                <span className="text-2xl font-mono font-bold text-red-300">{state.teams.B.totalScore}</span>
+                            </div>
+                            {!state.teams.B.hasTakenMour && <div className="text-xs text-red-400 mt-2 font-bold uppercase">Penalty: No Mour (-10 pts)</div>}
+                        </div>
+                    </div>
+
+                    <div className="flex justify-center mt-8">
+                        {isHost ? (
+                            <button
+                                onClick={() => actions.nextRound()}
+                                className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold px-12 py-4 rounded-xl shadow-lg hover:scale-105 transition-all"
+                            >
+                                Start Next Round
+                            </button>
+                        ) : (
+                            <div className="flex items-center text-slate-400 animate-pulse">
+                                <span className="mr-2">⏳</span> Waiting for host to start next round...
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // 3. Welcome Screen (No Players)
     if (state.phase === 'LOBBY' && state.players.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center h-screen bg-slate-950 text-white relative overflow-hidden">
@@ -110,7 +205,7 @@ export function GameBoard() {
         );
     }
 
-    // 2. Lobby Screen (Waiting for Players)
+    // 4. Lobby Screen (Waiting for Players)
     if (state.phase === 'LOBBY') {
         return (
             <div className="flex flex-col items-center justify-center h-screen bg-slate-900 text-white relative">
@@ -142,9 +237,23 @@ export function GameBoard() {
                         {[0, 1, 2, 3].map(i => {
                             const player = state.players[i];
                             return (
-                                <div key={i} className={`h-40 rounded-xl border-2 flex flex-col items-center justify-center p-4 transition-all ${player ? 'bg-slate-800 border-green-500 shadow-lg shadow-green-900/20' : 'bg-slate-900/50 border-slate-800 border-dashed'}`}>
+                                <div key={i} className={`h-40 rounded-xl border-2 flex flex-col items-center justify-center p-4 transition-all relative group ${player ? 'bg-slate-800 border-green-500 shadow-lg shadow-green-900/20' : 'bg-slate-900/50 border-slate-800 border-dashed'}`}>
                                     {player ? (
                                         <>
+                                            {isHost && player.id !== peerId && (
+                                                <button
+                                                    className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-full transition-all opacity-0 group-hover:opacity-100"
+                                                    title="Kick Player"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (confirm(`Kick ${player.name}?`)) {
+                                                            actions.kickPlayer(player.id);
+                                                        }
+                                                    }}
+                                                >
+                                                    ✕
+                                                </button>
+                                            )}
                                             <div className="w-16 h-16 bg-slate-700 rounded-full mb-3 flex items-center justify-center text-2xl">
                                                 {player.name[0]?.toUpperCase()}
                                             </div>
@@ -160,18 +269,23 @@ export function GameBoard() {
                     </div>
 
                     <div className="flex justify-center gap-4">
+                        {isHost && (
+                            <button
+                                className="bg-slate-800 hover:bg-slate-700 text-white px-8 py-4 rounded-xl font-bold transition-all border border-slate-700"
+                                onClick={() => actions.addBot(`Bot ${state.players.length + 1}`)}
+                            >
+                                + Add Bot
+                            </button>
+                        )}
                         <button
-                            className="bg-slate-800 hover:bg-slate-700 text-white px-8 py-4 rounded-xl font-bold transition-all border border-slate-700"
-                            onClick={() => actions.addBot(`Bot ${state.players.length + 1}`)}
+                            disabled={!isHost || state.players.length < 1}
+                            className={`px-12 py-4 rounded-xl font-bold text-xl shadow-xl transition-all disabled:opacity-50 disabled:scale-100 ${isHost
+                                ? "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 text-white hover:scale-105"
+                                : "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed"
+                                }`}
+                            onClick={() => isHost && actions.startGame()}
                         >
-                            + Add Bot
-                        </button>
-                        <button
-                            disabled={state.players.length < 1}
-                            className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 text-white px-12 py-4 rounded-xl font-bold text-xl shadow-xl hover:scale-105 transition-all disabled:opacity-50 disabled:scale-100"
-                            onClick={() => actions.startGame()}
-                        >
-                            START GAME
+                            {isHost ? "START GAME" : "Waiting for host to start the game"}
                         </button>
                     </div>
                 </div>
@@ -202,8 +316,8 @@ export function GameBoard() {
                 <div>
                     <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-yellow-600">Round {state.roundNumber}</h2>
                     <div className="flex gap-4 text-xs font-mono opacity-80">
-                        <span>A: {state.teams.A.roundScore}</span>
-                        <span>B: {state.teams.B.roundScore}</span>
+                        <span>A: {state.teams.A.totalScore} <span className="text-white/40 text-[10px]">({state.teams.A.roundScore})</span></span>
+                        <span>B: {state.teams.B.totalScore} <span className="text-white/40 text-[10px]">({state.teams.B.roundScore})</span></span>
                     </div>
                 </div>
 
@@ -368,6 +482,11 @@ export function GameBoard() {
                                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${meld.clean ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-slate-700/50 text-slate-400 border border-white/10'}`}>
                                                     {meld.type} {meld.clean ? 'CLEAN' : ''}
                                                 </span>
+                                                {calculateMeldBonus(meld) > 0 && (
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                                        {calculateMeldBonus(meld)}
+                                                    </span>
+                                                )}
                                             </div>
                                             <span className="text-[10px] text-white/20 font-mono">#{meld.cards.length}</span>
                                         </div>
@@ -417,6 +536,11 @@ export function GameBoard() {
                                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${meld.clean ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-slate-700/50 text-slate-400 border border-white/10'}`}>
                                                     {meld.type} {meld.clean ? 'CLEAN' : ''}
                                                 </span>
+                                                {calculateMeldBonus(meld) > 0 && (
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                                        {calculateMeldBonus(meld)}
+                                                    </span>
+                                                )}
                                             </div>
                                             <span className="text-[10px] text-white/20 font-mono">#{meld.cards.length}</span>
                                         </div>

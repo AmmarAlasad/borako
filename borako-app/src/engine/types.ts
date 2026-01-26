@@ -17,6 +17,7 @@ export interface Meld {
     cards: Card[];
     // Metadata for validation/scoring
     clean?: boolean; // No wilds
+    wildCount?: number; // Number of substitutes
     suit?: Suit; // For runs
     rank?: Rank; // For sets
 }
