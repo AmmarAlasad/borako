@@ -1,0 +1,152 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+scale 1.0
+
+title Borako Game Architecture (React + PeerJS)
+
+package "Engine (Game Logic)" {
+  class "Types" <<Interface>> {
+    +GameState
+    +Player
+    +Team
+    +Meld
+    +Card
+  }
+
+  class "GameReducer" <<Module>> {
+    +gameReducer(state: GameState, action: GameAction): GameState
+    -- Actions --
+    +INIT_GAME
+    +JOIN_GAME
+    +KICK_PLAYER
+    +START_GAME
+    +NEXT_ROUND
+    +RESET_GAME
+    +DRAW_CARD
+    +SWEEP_PILE
+    +MELD_CARDS
+    +ADD_TO_MELD
+    +DISCARD_CARD
+    +REORDER_HAND
+    +SYNC_STATE
+  }
+
+  class "Validator" <<Module>> {
+    +validateMeld(cards: Card[]): ValidationResult
+    .. internals ..
+    -solveRun(cards, suit)
+    -trySolveSequence(naturals, wilds)
+    -sortRunCards()
+  }
+
+  class "Scoring" <<Module>> {
+    +calculateMeldBonus(meld: Meld): number
+    +calculateTeamRoundScore(melds, hand, mour, goOut): ScoreResult
+  }
+
+  class "Deck" <<Module>> {
+    +createGameDeck(): Card[]
+    -createSingleDeck(index): Card[]
+    -shuffle(cards): Card[]
+  }
+
+  GameReducer ..> Validator : uses
+  GameReducer ..> Scoring : uses
+  GameReducer ..> Deck : uses
+  GameReducer ..> Types : depends on
+}
+
+package "Network (PeerJS)" {
+  class ConnectionManager {
+    -peer: Peer
+    -connections: DataConnection[]
+    -myId: string
+    -onMessage: (msg: Message) => void
+    -- Lifecycle --
+    +initialize(id?): Promise<string>
+    +connect(hostId): Promise<void>
+    +destroy()
+    -- Communication --
+    +setMessageHandler(cb)
+    +broadcast(msg: StateUpdate)
+    +sendToHost(msg: Action)
+    -handleConnection(conn)
+  }
+
+  class "Message Protocol" <<Type>> {
+    type: 'STATE_UPDATE' | 'ACTION'
+    payload: any
+  }
+
+  ConnectionManager ..> "Message Protocol" : uses
+}
+
+package "React Logic (Hooks)" {
+  class UseGameHook {
+    -state: GameState
+    -dispatch: Function
+    -peerId: string
+    -isConnected: boolean
+    -- Actions (Public API) --
+    +initGame(hostName)
+    +joinGame(hostId, name)
+    +startGame()
+    +nextRound()
+    +resetGame()
+    +kickPlayer(playerId)
+    +addBot(name)
+    +drawCard(pid)
+    +sweepPile(pid)
+    +meldCards(pid, cards)
+    +addToMeld(pid, meldId, cards)
+    +discardCard(pid, cardId)
+    -- Logic --
+    -handleAction(action)
+    -isHost(): boolean
+  }
+
+  UseGameHook --> GameReducer : useReducer()
+  UseGameHook --> ConnectionManager : manages
+}
+
+package "UI (Components)" {
+  class GameBoard {
+    +Render(state, actions)
+    -- Views --
+    +WelcomeView
+    +LobbyView
+    +GameView
+    +RoundEndOverlay
+    +GameEndOverlay
+  }
+
+  GameBoard --> UseGameHook : calls
+}
+
+' Interactions
+note right of UseGameHook
+  <b>Action Handling Flow</b>
+  1. UI calls action (e.g. drawCard)
+  2. handleAction() checks role:
+     - <b>If Host:</b> dispatch(action) -> Reducer
+     - <b>If Client:</b> connection.sendToHost(action)
+end note
+
+note right of ConnectionManager
+  <b>Host Loop</b>
+  - Listens for 'ACTION' messages from clients.
+  - Dispatches them to Reducer.
+  - Subscribes to State changes (useEffect).
+  - Broadcasts 'STATE_UPDATE' to all clients.
+end note
+
+note bottom of Validator
+  <b>Rules Logic</b>
+  - Enforces Meld structure (Run/Set)
+  - Identifies Wildcards (2s, Jokers)
+  - Checks Clean vs Dirty runs
+  - Sorts cards logically
+end note
+
+@enduml
