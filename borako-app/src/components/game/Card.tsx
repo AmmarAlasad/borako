@@ -50,7 +50,7 @@ export function Card({ card, isFaceDown, isSelected, onClick, className, style }
     // ... existing logic ...
     const fileName = card.isDevilJoker
         ? (card.suit === 'HEARTS' || card.suit === 'DIAMONDS' ? 'red_joker.svg' : 'black_joker.svg')
-        : `${rankName}_of_${suitName}.svg`;
+        : `${rankName}_of_${suitName}${['jack', 'queen', 'king'].includes(rankName) ? '2' : ''}.svg`;
 
     return (
         <motion.div
