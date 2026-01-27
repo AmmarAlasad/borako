@@ -33,6 +33,8 @@ export const INITIAL_STATE: GameState = {
     currentTurnPlayerId: null,
     turnPhase: 'WAITING_FOR_DRAW',
     hasSwept: false,
+    mustMeldAfterSweep: false,
+    sweptCards: [],
     logs: [],
 };
 
@@ -196,6 +198,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 players,
                 turnPhase: 'PLAYING',
                 hasSwept: true, // Must Meld!
+                mustMeldAfterSweep: true, // Enforce meld requirement
+                sweptCards: discardPile, // Store for potential undo
                 logs: [...state.logs, "Player swept the pile!"]
             };
         }
@@ -252,6 +256,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                         melds: [...state.teams[teamId].melds, newMeld]
                     }
                 },
+                mustMeldAfterSweep: false, // Sweep requirement fulfilled
+                sweptCards: [], // Clear swept cards
                 logs: [...state.logs, `Player melded ${cards.length} cards`]
             };
         }
@@ -330,6 +336,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                         melds: state.teams[teamId].melds.map(m => m.id === meldId ? updatedMeld : m)
                     }
                 },
+                mustMeldAfterSweep: false, // Sweep requirement fulfilled
+                sweptCards: [], // Clear swept cards
                 logs: [...state.logs, `Added to meld`]
             };
         }
@@ -338,19 +346,28 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             if (state.currentTurnPlayerId !== action.payload.playerId) return state;
             if (state.turnPhase !== 'PLAYING') return state; // Must be in playing phase to discard
 
-            // CHECK SWEEP CONSTRAINT
-            // "If you sweep... must immediately Open a new meld OR Add... Then discard"
-            if (state.hasSwept) {
-                // Logic: Did they meld this turn?
-                // We need to track `didMeld` in state?
-                // `hasSwept` implies "Sweep Action Happened".
-                // We can add `turnActions: ['SWEEP', 'MELD']` to track history?
-                // Or simpler: Check if hand size increased? No.
-                // Let's assume the UI enforces this, or we track `meldedThisTurn`.
-                // Let's add `meldedThisTurn` to global or logic.
-                // For now, I'll Skip enforcement here or assume `hasSwept` is cleared by Meld?
-                // No, hasSwept is set at sweep.
-                // Let's add `hasMelded` to state.
+            // SWEEP ENFORCEMENT: If player swept but didn't meld, undo the sweep
+            if (state.mustMeldAfterSweep) {
+                // Player tried to discard without melding after sweep - UNDO SWEEP
+                const player = state.players.find(p => p.id === action.payload.playerId)!;
+
+                // Remove swept cards from player's hand
+                const sweptCardIds = new Set(state.sweptCards.map(c => c.id));
+                const handWithoutSweptCards = player.hand.filter(c => !sweptCardIds.has(c.id));
+
+                // Return swept cards to discard pile
+                return {
+                    ...state,
+                    players: state.players.map(p =>
+                        p.id === player.id ? { ...p, hand: handWithoutSweptCards } : p
+                    ),
+                    discardPile: [...state.sweptCards], // Return swept cards to pile
+                    turnPhase: 'WAITING_FOR_DRAW', // Reset to draw phase
+                    hasSwept: false,
+                    mustMeldAfterSweep: false,
+                    sweptCards: [],
+                    logs: [...state.logs, "Sweep cancelled - must draw from deck instead"]
+                };
             }
 
             const player = state.players.find(p => p.id === action.payload.playerId)!;
@@ -435,6 +452,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             nextState.currentTurnPlayerId = nextState.players[nextPlayerIndex].id;
             nextState.turnPhase = 'WAITING_FOR_DRAW';
             nextState.hasSwept = false;
+            nextState.mustMeldAfterSweep = false;
+            nextState.sweptCards = [];
 
             return nextState;
         }

@@ -62,6 +62,8 @@ export interface GameState {
     currentTurnPlayerId: string | null;
     turnPhase: TurnPhase;
     hasSwept: boolean; // Track if current player swept (forces meld)
+    mustMeldAfterSweep: boolean; // Enforce meld requirement after sweep
+    sweptCards: Card[]; // Cards that were swept (for undo if player doesn't meld)
 
     // Messages/Logs
     logs: string[];
