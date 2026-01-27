@@ -388,18 +388,21 @@ export function GameBoard() {
                 <div className="relative flex justify-center items-start">
                     {teammate ? (
                         <div className={`flex flex-col items-center transition-all duration-300 ${teammate.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
-                            {/* Stacked Card Backs (Mixed Colors for realism) */}
-                            <div className="relative h-20 w-32 flex justify-center">
-                                {Array.from({ length: Math.min(teammate.hand.length, 5) }).map((_, i) => (
-                                    <div key={i} className="absolute top-0 w-12 h-20"
-                                        style={{ left: `calc(50% - 24px + ${i * 4}px)`, transform: `translateY(${i * 2}px)` }}>
-                                        <Card isFaceDown deckColor={i % 2 === 0 ? 'blue' : 'red'} className="w-full h-full shadow-md" />
-                                    </div>
-                                ))}
-                                {/* Enhanced Count Badge */}
-                                <div className="absolute -right-10 top-1/2 -translate-y-1/2 bg-yellow-500 text-black font-black text-xl px-3 py-1 rounded-full border-2 border-white shadow-xl z-20">
-                                    {teammate.hand.length}
+                            {/* Stacked Card Backs (Extended Distribution) */}
+                            <div className="relative h-24 flex justify-center items-center">
+                                <div className="flex -space-x-8">
+                                    {Array.from({ length: Math.min(teammate.hand.length, 8) }).map((_, i) => (
+                                        <div key={i} className="relative hover:-translate-y-2 transition-transform">
+                                            <Card isFaceDown deckColor={i % 2 === 0 ? 'blue' : 'red'} className="w-24 h-36 lg:w-32 lg:h-48 shadow-md" />
+                                        </div>
+                                    ))}
                                 </div>
+                                {/* Enhanced Count Badge */}
+                                {teammate.hand.length > 8 && (
+                                    <div className="absolute -right-8 top-0 bg-yellow-500 text-black font-black text-xs px-2 py-1 rounded-full border border-white shadow-xl z-20">
+                                        +{teammate.hand.length - 8}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="mt-2 bg-black/50 px-4 py-1 rounded-full backdrop-blur-sm border border-white/20">
@@ -431,21 +434,23 @@ export function GameBoard() {
                 </div>
 
                 {/* --- MIDDLE ROW: Enemies + Melds --- */}
-                <div className="grid grid-cols-[10%_40%_40%_10%] h-full w-full gap-2">
+                <div className="grid grid-cols-[15%_35%_35%_15%] h-full w-full gap-2">
 
                     {/* LEFT COLUMN: Enemy 1 (Left) */}
                     <div className="flex items-center justify-start">
                         {enemyLeft && (
                             <div className={`flex flex-row items-center gap-4 transition-all duration-300 ${enemyLeft.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
-                                {/* Stacked Cards (Vertical for side player) */}
-                                <div className="relative w-20 h-32">
-                                    {Array.from({ length: Math.min(enemyLeft.hand.length, 5) }).map((_, i) => (
-                                        <div key={i} className="absolute left-0 w-20 h-12" style={{ top: `${i * 6}px` }}>
-                                            <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-full shadow-md" />
-                                        </div>
-                                    ))}
+                                {/* Stacked Cards (Vertical for side player - Extended) */}
+                                <div className="relative w-28 lg:w-32 flex flex-col items-center h-80 overflow-visible">
+                                    <div className="relative w-full h-full">
+                                        {Array.from({ length: Math.min(enemyLeft.hand.length, 8) }).map((_, i) => (
+                                            <div key={i} className="absolute left-0 w-full h-20 transition-all hover:translate-x-2" style={{ top: `${i * 32}px` }}> {/* Increased spacing */}
+                                                <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-full shadow-md" />
+                                            </div>
+                                        ))}
+                                    </div>
                                     {/* Enhanced Badge */}
-                                    <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-yellow-500 text-black font-black text-xl px-3 py-1 rounded-full border-2 border-white shadow-xl z-20">
+                                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-yellow-500 text-black font-black text-xl px-3 py-1 rounded-full border-2 border-white shadow-xl z-20">
                                         {enemyLeft.hand.length}
                                     </div>
                                 </div>
@@ -470,11 +475,11 @@ export function GameBoard() {
                                     <div className="flex -space-x-8"> {/* Tighter overlap for melds */}
                                         {meld.cards.map((c, idx) => (
                                             <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
-                                                <Card card={c} className="w-14 h-20 md:w-16 md:h-24 border border-black/20" /> {/* Smaller meld cards */}
+                                                <Card card={c} className="w-20 h-28 md:w-24 md:h-36 border border-black/20" /> {/* Larger meld cards */}
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="absolute -bottom-2 right-0 bg-black/60 text-[10px] font-bold text-white px-2 rounded-full border border-white/10">
+                                    <div className="absolute -bottom-6 right-0 bg-black/60 text-[10px] font-bold text-white px-2 rounded-full border border-white/10">
                                         {calculateMeldBonus(meld)}
                                     </div>
                                 </div>
@@ -493,11 +498,11 @@ export function GameBoard() {
                                     <div className="flex -space-x-8">
                                         {meld.cards.map((c, idx) => (
                                             <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
-                                                <Card card={c} className="w-14 h-20 md:w-16 md:h-24 border border-black/20" />
+                                                <Card card={c} className="w-20 h-28 md:w-24 md:h-36 border border-black/20" />
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="absolute -bottom-2 left-0 bg-black/60 text-[10px] font-bold text-white px-2 rounded-full border border-white/10">
+                                    <div className="absolute -bottom-6 left-0 bg-black/60 text-[10px] font-bold text-white px-2 rounded-full border border-white/10">
                                         {calculateMeldBonus(meld)}
                                     </div>
                                 </div>
@@ -509,13 +514,15 @@ export function GameBoard() {
                     <div className="flex items-center justify-end">
                         {enemyRight && (
                             <div className={`flex flex-row-reverse items-center gap-4 transition-all duration-300 ${enemyRight.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
-                                <div className="relative w-20 h-32">
-                                    {Array.from({ length: Math.min(enemyRight.hand.length, 5) }).map((_, i) => (
-                                        <div key={i} className="absolute right-0 w-20 h-12" style={{ top: `${i * 6}px` }}>
-                                            <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-full shadow-md" />
-                                        </div>
-                                    ))}
-                                    <div className="absolute -bottom-6 right-1/2 translate-x-1/2 bg-yellow-500 text-black font-black text-xl px-3 py-1 rounded-full border-2 border-white shadow-xl z-20">
+                                <div className="relative w-28 lg:w-32 flex flex-col items-center h-80 overflow-visible">
+                                    <div className="relative w-full h-full">
+                                        {Array.from({ length: Math.min(enemyRight.hand.length, 8) }).map((_, i) => (
+                                            <div key={i} className="absolute right-0 w-full h-20 transition-all hover:-translate-x-2" style={{ top: `${i * 32}px` }}>
+                                                <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-full shadow-md" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="absolute -bottom-4 right-1/2 translate-x-1/2 bg-yellow-500 text-black font-black text-xl px-3 py-1 rounded-full border-2 border-white shadow-xl z-20">
                                         {enemyRight.hand.length}
                                     </div>
                                 </div>
@@ -562,7 +569,7 @@ export function GameBoard() {
                             {state.discardPile.length > 0 ? (
                                 <div className="relative h-full flex items-center cursor-pointer group hover:scale-105 transition-transform">
                                     {/* Fan the last 8 cards horizontally */}
-                                    <div className="flex -space-x-12">
+                                    <div className="flex -space-x-8">
                                         {state.discardPile.slice(Math.max(0, state.discardPile.length - 8)).map((card) => (
                                             <div key={card.id} className="relative hover:-translate-y-4 transition-transform duration-200">
                                                 <Card card={card} className="w-16 h-24 lg:w-20 lg:h-28 shadow-lg brightness-90 border border-black/30" />
@@ -627,17 +634,17 @@ export function GameBoard() {
 
                     {/* RIGHT: Mour Area */}
                     <div className="flex flex-col items-center justify-end pb-12 pr-8 opacity-90">
-                        {/* Two distinct decks side-by-side/stacked with Real Cards */}
-                        <div className="flex gap-4">
-                            {/* Deck 1 (Red) */}
-                            <div className="relative w-16 h-24 transform -rotate-6 transition-transform hover:scale-110">
-                                <Card isFaceDown deckColor="red" className="w-full h-full shadow-lg" />
+                        {/* Two distinct decks stacked: one vertical, one horizontal */}
+                        <div className="relative w-24 h-24 flex items-center justify-center">
+                            {/* Pile 1: Vertical */}
+                            <div className="absolute transition-transform hover:scale-110 z-0">
+                                <Card isFaceDown deckColor="red" className="w-16 h-24 shadow-lg" />
                                 <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-sm">11</div>
                             </div>
-                            {/* Deck 2 (Blue/Green? - Using Blue as requested/default) */}
-                            <div className="relative w-16 h-24 transform rotate-6 transition-transform hover:scale-110">
-                                <Card isFaceDown deckColor="blue" className="w-full h-full shadow-lg" />
-                                <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-sm">11</div>
+                            {/* Pile 2: Horizontal (Rotated 90deg) */}
+                            <div className="absolute transition-transform hover:scale-110 z-10 rotate-90">
+                                <Card isFaceDown deckColor="blue" className="w-16 h-24 shadow-lg" />
+                                <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-sm -rotate-90">11</div>
                             </div>
                         </div>
                         <div className="mt-4 text-xs font-black text-white/50 bg-black/30 px-3 py-1 rounded-full uppercase tracking-widest">
