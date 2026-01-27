@@ -15,6 +15,13 @@ export function GameBoard() {
     const [view, setView] = useState<'WELCOME' | 'JOIN'>('WELCOME');
     const [isLoading, setIsLoading] = useState(false);
 
+    // Feedback Toast State (Hoisted to top)
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const showToast = (msg: string) => {
+        setToastMessage(msg);
+        setTimeout(() => setToastMessage(null), 3000);
+    };
+
     const handleHost = async () => {
         setIsLoading(true);
         try {
@@ -38,7 +45,9 @@ export function GameBoard() {
 
     // 1. GAME END Screen
     if (state.phase === 'GAME_END') {
-        const winner = state.teams.A.totalScore >= 350 ? 'TEAM A' : 'TEAM B';
+        const teamAScore = state.teams?.A?.totalScore ?? 0;
+        const teamBScore = state.teams?.B?.totalScore ?? 0;
+        const winner = teamAScore >= 350 ? 'TEAM A' : 'TEAM B';
         return (
             <div className="flex flex-col items-center justify-center h-screen bg-slate-950 text-white relative overflow-hidden z-50">
                 <div className="text-center p-12 bg-slate-900 rounded-2xl shadow-2xl border border-yellow-500/30 animate-in zoom-in spin-in-3 duration-500">
@@ -49,11 +58,11 @@ export function GameBoard() {
                     <div className="flex justify-center gap-12 text-2xl font-mono mb-8">
                         <div className="flex flex-col items-center">
                             <span className="text-blue-400 font-bold">Team A</span>
-                            <span className="text-4xl">{state.teams.A.totalScore}</span>
+                            <span className="text-4xl">{teamAScore}</span>
                         </div>
                         <div className="flex flex-col items-center">
                             <span className="text-red-400 font-bold">Team B</span>
-                            <span className="text-4xl">{state.teams.B.totalScore}</span>
+                            <span className="text-4xl">{teamBScore}</span>
                         </div>
                     </div>
                     {isHost ? (
@@ -73,6 +82,9 @@ export function GameBoard() {
 
     // 2. ROUND END Screen
     if (state.phase === 'ROUND_END') {
+        const teamA = state.teams?.A || { roundScore: 0, totalScore: 0, hasTakenMour: true, melds: [] };
+        const teamB = state.teams?.B || { roundScore: 0, totalScore: 0, hasTakenMour: true, melds: [] };
+
         return (
             <div className="flex flex-col items-center justify-center h-screen bg-black/90 text-white relative z-50 backdrop-blur-md">
                 <div className="bg-slate-900 p-8 rounded-2xl border border-white/10 max-w-2xl w-full shadow-2xl">
@@ -86,13 +98,13 @@ export function GameBoard() {
                             <h3 className="text-xl font-bold text-blue-400 mb-4 border-b border-blue-500/20 pb-2">TEAM A</h3>
                             <div className="flex justify-between items-end mb-2">
                                 <span className="text-slate-400">Round Score</span>
-                                <span className="text-2xl font-mono font-bold text-white">+{state.teams.A.roundScore}</span>
+                                <span className="text-2xl font-mono font-bold text-white">+{teamA.roundScore}</span>
                             </div>
                             <div className="flex justify-between items-end">
                                 <span className="text-slate-400">Total Score</span>
-                                <span className="text-2xl font-mono font-bold text-blue-300">{state.teams.A.totalScore}</span>
+                                <span className="text-2xl font-mono font-bold text-blue-300">{teamA.totalScore}</span>
                             </div>
-                            {!state.teams.A.hasTakenMour && <div className="text-xs text-red-400 mt-2 font-bold uppercase">Penalty: No Mour (-10 pts)</div>}
+                            {!teamA.hasTakenMour && <div className="text-xs text-red-400 mt-2 font-bold uppercase">Penalty: No Mour (-10 pts)</div>}
                         </div>
 
                         {/* Team B Stats */}
@@ -100,13 +112,13 @@ export function GameBoard() {
                             <h3 className="text-xl font-bold text-red-400 mb-4 border-b border-red-500/20 pb-2">TEAM B</h3>
                             <div className="flex justify-between items-end mb-2">
                                 <span className="text-slate-400">Round Score</span>
-                                <span className="text-2xl font-mono font-bold text-white">+{state.teams.B.roundScore}</span>
+                                <span className="text-2xl font-mono font-bold text-white">+{teamB.roundScore}</span>
                             </div>
                             <div className="flex justify-between items-end">
                                 <span className="text-slate-400">Total Score</span>
-                                <span className="text-2xl font-mono font-bold text-red-300">{state.teams.B.totalScore}</span>
+                                <span className="text-2xl font-mono font-bold text-red-300">{teamB.totalScore}</span>
                             </div>
-                            {!state.teams.B.hasTakenMour && <div className="text-xs text-red-400 mt-2 font-bold uppercase">Penalty: No Mour (-10 pts)</div>}
+                            {!teamB.hasTakenMour && <div className="text-xs text-red-400 mt-2 font-bold uppercase">Penalty: No Mour (-10 pts)</div>}
                         </div>
                     </div>
 
@@ -293,9 +305,18 @@ export function GameBoard() {
         );
     }
 
-    const currentPlayer = state.players.find(p => p.id === state.currentTurnPlayerId);
+
     const myPlayer = state.players.find(p => p.id === peerId);
-    const opponents = state.players.filter(p => p.id !== peerId);
+
+    // Logic to identify teammate and enemies for 4-player view (or 2-player adaptation)
+    const myTeamId = myPlayer?.teamId;
+    const teammate = state.players.find(p => p.id !== peerId && p.teamId === myTeamId);
+    // get enemies (different team)
+    const enemies = state.players.filter(p => p.teamId !== myTeamId);
+    // Assign Left/Right arbitrarily or by index for consistency
+    const enemyLeft = enemies[0];
+    const enemyRight = enemies[1]; // Might be undefined in 3-player or 2-player games
+
     const isMyTurn = state.currentTurnPlayerId === peerId;
     const handCards = myPlayer?.hand || [];
 
@@ -309,365 +330,328 @@ export function GameBoard() {
         setSelectedMeldId(prev => (prev === meldId ? null : meldId));
     };
 
+
+
+    // Action Wrappers with Feedback
+    const handleMeld = () => {
+        if (state.turnPhase === 'WAITING_FOR_DRAW') {
+            showToast("Draw a card first!");
+            return;
+        }
+        if (peerId) actions.meldCards(peerId, handCards.filter(c => selectedCards.includes(c.id)));
+        setSelectedCards([]);
+    };
+
+    const handleAddToMeld = () => {
+        if (state.turnPhase === 'WAITING_FOR_DRAW') {
+            showToast("Draw a card first!");
+            return;
+        }
+        if (!peerId || !selectedMeldId) return;
+        actions.addToMeld(peerId, selectedMeldId, handCards.filter(c => selectedCards.includes(c.id)));
+        setSelectedCards([]);
+        setSelectedMeldId(null);
+    };
+
+    const handleDiscard = () => {
+        if (state.turnPhase === 'WAITING_FOR_DRAW') {
+            showToast("Draw a card first!");
+            return;
+        }
+        if (peerId && selectedCards.length === 1) {
+            actions.discardCard(peerId, selectedCards[0]);
+            setSelectedCards([]);
+        }
+    };
+
+
+
     return (
-        <div className="flex flex-col h-screen bg-green-800 text-white overflow-hidden relative font-sans">
-            {/* HUD - Top Bar */}
-            <div className="h-16 shrink-0 bg-black/30 backdrop-blur-sm flex justify-between items-center px-6 border-b border-white/10 z-50">
-                <div>
-                    <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-yellow-600">Round {state.roundNumber}</h2>
-                    <div className="flex gap-4 text-xs font-mono opacity-80">
-                        <span>A: {state.teams.A.totalScore} <span className="text-white/40 text-[10px]">({state.teams.A.roundScore})</span></span>
-                        <span>B: {state.teams.B.totalScore} <span className="text-white/40 text-[10px]">({state.teams.B.roundScore})</span></span>
+        <div className="flex flex-col h-screen w-screen bg-[#35654d] text-white overflow-hidden relative font-sans select-none">
+            {/* Background Texture Overlay */}
+            <div className="absolute inset-0 pointer-events-none opacity-30 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] mix-blend-overlay z-0"></div>
+
+            {/* ERROR / FEEDBACK POPUP */}
+            {toastMessage && (
+                <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-4 fade-in duration-300">
+                    <div className="bg-red-600 text-white font-bold px-6 py-3 rounded-xl shadow-2xl border-2 border-white/20 flex items-center gap-3">
+                        <span className="text-2xl">⚠️</span>
+                        <span>{toastMessage}</span>
                     </div>
                 </div>
+            )}
 
-                <div className="flex flex-col items-center">
-                    <div className="text-2xl font-bold text-yellow-300 drop-shadow-md">
-                        {isMyTurn ? "YOUR TURN" : (currentPlayer ? `${currentPlayer.name}'s Turn` : "Waiting...")}
-                    </div>
-                    <span className="text-xs uppercase tracking-widest text-white/50">
-                        {state.turnPhase === 'WAITING_FOR_DRAW' ? "Draw or Sweep" : "Meld or Discard"}
-                    </span>
-                </div>
+            {/* Main Grid Container */}
+            <div className="relative z-10 w-full h-full grid grid-rows-[15%_55%_30%] p-4 gap-4">
 
-                <div className="text-right text-xs space-y-1">
-                    <div className={state.teams.A.hasTakenMour ? "text-red-400" : "text-green-400"}>
-                        Mour A: {state.teams.A.hasTakenMour ? "TAKEN" : "READY"}
-                    </div>
-                    <div className={state.teams.B.hasTakenMour ? "text-red-400" : "text-green-400"}>
-                        Mour B: {state.teams.B.hasTakenMour ? "TAKEN" : "READY"}
-                    </div>
-                </div>
-            </div>
-
-            {/* Main Game Area container - Flex Col */}
-            <div className="flex-1 flex flex-col min-h-0 relative w-full max-w-[1920px] mx-auto">
-
-                {/* Opponent Areas - Top Ribbon */}
-                {opponents.length > 0 && (
-                    <div className="shrink-0 py-4 flex justify-center gap-8 relative z-40 bg-gradient-to-b from-black/20 to-transparent">
-                        {opponents.map(opp => (
-                            <div key={opp.id} className="flex flex-col items-center group">
-                                <div className={`relative px-4 py-2 rounded-xl backdrop-blur-md border border-white/10 transition-all ${opp.id === state.currentTurnPlayerId ? 'bg-yellow-500/10 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.2)]' : 'bg-black/40'}`}>
-                                    <div className="flex items-center gap-3 mb-1">
-                                        <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold ring-2 ring-white/10">
-                                            {opp.name[0]}
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className={`font-bold text-sm leading-none ${opp.id === state.currentTurnPlayerId ? 'text-yellow-400' : 'text-white'}`}>
-                                                {opp.name} {opp.isHost && '👑'}
-                                            </span>
-                                            <span className="text-[10px] text-zinc-400 font-mono mt-1">
-                                                {opp.hand.length} Cards
-                                            </span>
-                                        </div>
+                {/* --- TOP ROW: Teammate --- */}
+                <div className="relative flex justify-center items-start">
+                    {teammate ? (
+                        <div className={`flex flex-col items-center transition-all duration-300 ${teammate.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
+                            {/* Stacked Card Backs (Mixed Colors for realism) */}
+                            <div className="relative h-20 w-32 flex justify-center">
+                                {Array.from({ length: Math.min(teammate.hand.length, 5) }).map((_, i) => (
+                                    <div key={i} className="absolute top-0 w-12 h-20"
+                                        style={{ left: `calc(50% - 24px + ${i * 4}px)`, transform: `translateY(${i * 2}px)` }}>
+                                        <Card isFaceDown deckColor={i % 2 === 0 ? 'blue' : 'red'} className="w-full h-full shadow-md" />
                                     </div>
-                                    {/* Small Card Fan */}
-                                    <div className="flex -space-x-2 h-8 justify-center mt-1">
-                                        {Array.from({ length: Math.min(opp.hand.length, 10) }).map((_, i) => (
-                                            <div key={i} className="w-5 h-8 bg-blue-900 rounded border border-white/20 shadow-sm" style={{ transform: `rotate(${(i - 5) * 3}deg)` }} />
-                                        ))}
-                                    </div>
+                                ))}
+                                {/* Enhanced Count Badge */}
+                                <div className="absolute -right-10 top-1/2 -translate-y-1/2 bg-yellow-500 text-black font-black text-xl px-3 py-1 rounded-full border-2 border-white shadow-xl z-20">
+                                    {teammate.hand.length}
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                )}
 
-                {/* Center Table - Responsive & Flexible */}
-                <div className="flex-1 w-full flex flex-col lg:flex-row items-center justify-center gap-4 lg:gap-8 p-4 overflow-hidden">
-
-                    {/* Deck & Discard Area */}
-                    <div className="flex shrink-0 gap-6 items-center justify-center lg:flex-col lg:justify-start">
-                        {/* Deck */}
-                        <div
-                            className="w-28 h-40 lg:w-40 lg:h-56 bg-blue-900 rounded-xl border-2 border-white/20 shadow-xl flex items-center justify-center cursor-pointer hover:scale-105 transition-transform relative"
-                            onClick={() => isMyTurn && state.turnPhase === 'WAITING_FOR_DRAW' && peerId && actions.drawCard(peerId)}
-                        >
-                            <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,#1e3a8a_0px,#1e3a8a_10px,#172554_10px,#172554_20px)] opacity-50 rounded-xl" />
-                            <div className="text-center z-10 relative">
-                                <div className="font-bold text-xl lg:text-3xl font-serif text-blue-100">Deck</div>
-                                <div className="text-sm font-mono text-blue-300 mt-1">{state.deck.length}</div>
+                            <div className="mt-2 bg-black/50 px-4 py-1 rounded-full backdrop-blur-sm border border-white/20">
+                                <span className={`font-black tracking-wide text-lg ${teammate.id === state.currentTurnPlayerId ? 'text-yellow-400' : 'text-blue-100'}`}>
+                                    {teammate.name.toUpperCase()}
+                                </span>
                             </div>
                         </div>
+                    ) : (
+                        <div className="opacity-30 text-sm font-bold uppercase tracking-widest">No Teammate</div>
+                    )}
 
-                        {/* Discard Pile */}
-                        <div className="relative group perspective-1000 z-30">
-                            <div
-                                className="w-32 h-44 lg:w-44 lg:h-60 border-2 border-dashed border-white/20 rounded-xl flex items-center justify-center relative cursor-pointer bg-white/5 transition-all group-hover:border-yellow-400/50 group-hover:scale-105"
-                                onClick={() => {
-                                    if (isMyTurn && state.turnPhase === 'WAITING_FOR_DRAW' && peerId) {
-                                        actions.sweepPile(peerId);
-                                    }
-                                }}
-                            >
-                                {state.discardPile.length > 0 ? (
-                                    <div className="relative w-full h-full flex items-center justify-center">
-                                        {state.discardPile.slice(Math.max(0, state.discardPile.length - 6), state.discardPile.length - 1).map((card, i) => (
-                                            <div
-                                                key={card.id}
-                                                className="absolute shadow-md rounded-lg overflow-hidden"
-                                                style={{
-                                                    transform: `rotate(${(i - 2) * 8}deg) translate(${(i - 2) * 2}px, ${(i - 2) * 2}px)`,
-                                                    zIndex: i
-                                                }}
-                                            >
-                                                <Card card={card} className="w-20 h-32 lg:w-28 lg:h-40 grayscale-[20%] brightness-90" />
-                                            </div>
-                                        ))}
-                                        <div className="absolute z-20 shadow-2xl transition-transform duration-300 md:group-hover:-translate-y-12">
-                                            <Card card={state.discardPile[state.discardPile.length - 1]} className="w-24 h-36 lg:w-32 lg:h-48 ring-1 ring-black/50" />
+                    {/* Score Board (Top Center Overlay) */}
+                    <div className="absolute top-0 right-0 bg-black/60 px-6 py-3 rounded-xl border border-white/20 backdrop-blur-md shadow-xl">
+                        <div className="flex gap-8 text-base font-black tracking-wider">
+                            <div className="text-blue-400 flex flex-col items-center leading-none">
+                                <span>TEAM A</span>
+                                <span className="text-2xl text-white">{state.teams.A.totalScore}</span>
+                                <span className="text-[10px] text-white/50">+{state.teams.A.roundScore}</span>
+                            </div>
+                            <div className="w-px bg-white/20"></div>
+                            <div className="text-red-400 flex flex-col items-center leading-none">
+                                <span>TEAM B</span>
+                                <span className="text-2xl text-white">{state.teams.B.totalScore}</span>
+                                <span className="text-[10px] text-white/50">+{state.teams.B.roundScore}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- MIDDLE ROW: Enemies + Melds --- */}
+                <div className="grid grid-cols-[10%_40%_40%_10%] h-full w-full gap-2">
+
+                    {/* LEFT COLUMN: Enemy 1 (Left) */}
+                    <div className="flex items-center justify-start">
+                        {enemyLeft && (
+                            <div className={`flex flex-row items-center gap-4 transition-all duration-300 ${enemyLeft.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
+                                {/* Stacked Cards (Vertical for side player) */}
+                                <div className="relative w-20 h-32">
+                                    {Array.from({ length: Math.min(enemyLeft.hand.length, 5) }).map((_, i) => (
+                                        <div key={i} className="absolute left-0 w-20 h-12" style={{ top: `${i * 6}px` }}>
+                                            <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-full shadow-md" />
                                         </div>
+                                    ))}
+                                    {/* Enhanced Badge */}
+                                    <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-yellow-500 text-black font-black text-xl px-3 py-1 rounded-full border-2 border-white shadow-xl z-20">
+                                        {enemyLeft.hand.length}
                                     </div>
-                                ) : (
-                                    <div className="flex flex-col items-center">
-                                        <span className="text-3xl opacity-20">🗑️</span>
-                                        <span className="text-white/30 text-[10px] mt-2 font-bold uppercase tracking-widest">Discard</span>
-                                    </div>
-                                )}
-                                <div className="absolute -top-3 -right-3 w-8 h-8 lg:w-10 lg:h-10 bg-yellow-500 rounded-full flex items-center justify-center font-bold text-black border-4 border-slate-900 z-40 shadow-lg text-sm lg:text-base">
-                                    {state.discardPile.length}
+                                </div>
+
+                                <div className="-rotate-90 whitespace-nowrap bg-black/50 px-3 py-2 rounded-lg border border-white/20 backdrop-blur-sm">
+                                    <span className={`font-black tracking-wide text-lg ${enemyLeft.id === state.currentTurnPlayerId ? 'text-yellow-400' : 'text-white'}`}>
+                                        {enemyLeft.name.toUpperCase()}
+                                    </span>
                                 </div>
                             </div>
+                        )}
+                    </div>
 
-                            {/* Hover Expansion */}
-                            {state.discardPile.length > 0 && (
-                                <div className="absolute top-0 left-full ml-6 w-[350px] lg:w-[450px] bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 hidden group-hover:flex flex-col shadow-2xl z-50 animate-in fade-in slide-in-from-left-4 duration-200">
-                                    <div className="flex justify-between items-center mb-3 border-b border-white/10 pb-2">
-                                        <h4 className="text-yellow-400 font-bold uppercase text-xs tracking-wider">Discard Pile ({state.discardPile.length})</h4>
-                                        <span className="text-[10px] text-white/40">Latest on top</span>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 justify-start overflow-y-auto max-h-[300px] lg:max-h-[400px] w-full px-1 custom-scrollbar content-start">
-                                        {[...state.discardPile].reverse().map((card) => (
-                                            <div key={card.id} className="relative transition-all hover:z-10 hover:scale-110 duration-200 cursor-help" title={`${card.rank} of ${card.suit}`}>
-                                                <Card card={card} className="w-12 h-16 lg:w-16 lg:h-24 text-[10px] shadow-md hover:shadow-yellow-500/20" />
+                    {/* CENTER LEFT: Team A Melds */}
+                    <div className="bg-black/20 rounded-l-2xl border-r border-white/20 p-4 relative flex flex-col">
+                        <div className="text-xs font-black text-blue-400 opacity-80 tracking-[0.2em] uppercase mb-2">Team A Melds</div>
+                        <div className="flex-1 flex flex-wrap content-start gap-2 overflow-visible"> {/* Removed scroll, allow wrap */}
+                            {(state.teams?.A?.melds || []).map(meld => (
+                                <div key={meld.id}
+                                    onClick={() => isMyTurn && myPlayer?.teamId === 'A' && toggleMeldSelect(meld.id)}
+                                    className={`relative group transition-all cursor-pointer transform hover:scale-105 ${selectedMeldId === meld.id ? 'ring-2 ring-yellow-400 rounded-lg bg-white/5' : ''}`}>
+                                    <div className="flex -space-x-8"> {/* Tighter overlap for melds */}
+                                        {meld.cards.map((c, idx) => (
+                                            <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
+                                                <Card card={c} className="w-14 h-20 md:w-16 md:h-24 border border-black/20" /> {/* Smaller meld cards */}
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="absolute top-20 -left-2 w-4 h-4 bg-slate-900/95 border-l border-b border-white/10 rotate-45 transform"></div>
+                                    <div className="absolute -bottom-2 right-0 bg-black/60 text-[10px] font-bold text-white px-2 rounded-full border border-white/10">
+                                        {calculateMeldBonus(meld)}
+                                    </div>
                                 </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* CENTER RIGHT: Team B Melds */}
+                    <div className="bg-black/20 rounded-r-2xl border-l border-white/20 p-4 relative flex flex-col pl-6">
+                        <div className="text-xs font-black text-red-400 opacity-80 tracking-[0.2em] uppercase mb-2 text-right">Team B Melds</div>
+                        <div className="flex-1 flex flex-wrap content-start gap-2 justify-end overflow-visible">
+                            {(state.teams?.B?.melds || []).map(meld => (
+                                <div key={meld.id}
+                                    onClick={() => isMyTurn && myPlayer?.teamId === 'B' && toggleMeldSelect(meld.id)}
+                                    className={`relative group transition-all cursor-pointer transform hover:scale-105 ${selectedMeldId === meld.id ? 'ring-2 ring-yellow-400 rounded-lg bg-white/5' : ''}`}>
+                                    <div className="flex -space-x-8">
+                                        {meld.cards.map((c, idx) => (
+                                            <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
+                                                <Card card={c} className="w-14 h-20 md:w-16 md:h-24 border border-black/20" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="absolute -bottom-2 left-0 bg-black/60 text-[10px] font-bold text-white px-2 rounded-full border border-white/10">
+                                        {calculateMeldBonus(meld)}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* RIGHT COLUMN: Enemy 2 (Right) */}
+                    <div className="flex items-center justify-end">
+                        {enemyRight && (
+                            <div className={`flex flex-row-reverse items-center gap-4 transition-all duration-300 ${enemyRight.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
+                                <div className="relative w-20 h-32">
+                                    {Array.from({ length: Math.min(enemyRight.hand.length, 5) }).map((_, i) => (
+                                        <div key={i} className="absolute right-0 w-20 h-12" style={{ top: `${i * 6}px` }}>
+                                            <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-full shadow-md" />
+                                        </div>
+                                    ))}
+                                    <div className="absolute -bottom-6 right-1/2 translate-x-1/2 bg-yellow-500 text-black font-black text-xl px-3 py-1 rounded-full border-2 border-white shadow-xl z-20">
+                                        {enemyRight.hand.length}
+                                    </div>
+                                </div>
+                                <div className="rotate-90 whitespace-nowrap bg-black/50 px-3 py-2 rounded-lg border border-white/20 backdrop-blur-sm">
+                                    <span className={`font-black tracking-wide text-lg ${enemyRight.id === state.currentTurnPlayerId ? 'text-yellow-400' : 'text-white'}`}>
+                                        {enemyRight.name.toUpperCase()}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* --- BOTTOM ROW: Controls & Hand --- */}
+                <div className="grid grid-cols-[15%_70%_15%] pt-2">
+
+                    {/* LEFT: Deck Only */}
+                    <div className="flex items-end justify-center pb-8">
+                        <div className="relative group cursor-pointer hover:scale-105 transition-transform"
+                            onClick={() => {
+                                if (!isMyTurn || state.turnPhase !== 'WAITING_FOR_DRAW') { // Only allow if correct phase
+                                    // Optional: Feedback here too?
+                                }
+                                if (isMyTurn && state.turnPhase === 'WAITING_FOR_DRAW' && peerId) actions.drawCard(peerId);
+                            }}>
+                            {/* Deck Stack Visual (Using Real Cards) */}
+                            <div className="relative w-24 h-36">
+                                {[0, 1, 2].map(i => (
+                                    <div key={i} className="absolute inset-0" style={{ transform: `translate(-${i * 2}px, -${i * 2}px)` }}>
+                                        <Card isFaceDown deckColor="blue" className="w-full h-full shadow-lg" />
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="absolute -top-8 w-full text-center font-bold text-blue-200 tracking-widest uppercase text-sm">Deck ({state.deck.length})</div>
+                        </div>
+                    </div>
+
+                    {/* CENTER: Discard (Top) + Hand (Bottom) */}
+                    <div className="relative flex flex-col justify-end items-center h-full">
+
+                        {/* 1. DISCARD AREA (Spread Above Hand) */}
+                        <div className="mb-4 h-24 w-full flex justify-center items-end"
+                            onClick={() => isMyTurn && state.turnPhase === 'WAITING_FOR_DRAW' && peerId && actions.sweepPile(peerId)}>
+                            {state.discardPile.length > 0 ? (
+                                <div className="relative h-full flex items-center cursor-pointer group hover:scale-105 transition-transform">
+                                    {/* Fan the last 8 cards horizontally */}
+                                    <div className="flex -space-x-12">
+                                        {state.discardPile.slice(Math.max(0, state.discardPile.length - 8)).map((card) => (
+                                            <div key={card.id} className="relative hover:-translate-y-4 transition-transform duration-200">
+                                                <Card card={card} className="w-16 h-24 lg:w-20 lg:h-28 shadow-lg brightness-90 border border-black/30" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="ml-4 bg-black/60 px-3 py-1 rounded-full text-xs font-bold text-yellow-500 border border-yellow-500/30 opacity-60 group-hover:opacity-100 transition-opacity">
+                                        DISCARD PILE ({state.discardPile.length})
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="w-32 h-20 border-2 border-dashed border-white/10 rounded-lg flex items-center justify-center">
+                                    <span className="text-white/20 font-bold tracking-widest text-xs uppercase">Discard Empty</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 2. PLAYER HAND */}
+                        <div className="relative flex justify-center w-full z-20 pb-4">
+                            {/* Action Buttons (Floating above hand) */}
+                            <div className={`absolute -top-20 flex gap-4 transition-all duration-200 z-50 ${selectedCards.length > 0 ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-95 pointer-events-none'}`}>
+                                <button
+                                    disabled={!isMyTurn}
+                                    onClick={handleMeld}
+                                    className="px-6 py-2 bg-gradient-to-t from-yellow-700 to-yellow-500 text-white font-black rounded-lg shadow-[0_0_15px_rgba(234,179,8,0.5)] border-2 border-yellow-300 hover:scale-105 active:scale-95 uppercase tracking-wider text-sm">
+                                    Meld
+                                </button>
+                                <button
+                                    disabled={!isMyTurn || !selectedMeldId}
+                                    onClick={handleAddToMeld}
+                                    className="px-6 py-2 bg-gradient-to-t from-blue-700 to-blue-500 text-white font-black rounded-lg shadow-[0_0_15px_rgba(59,130,246,0.5)] border-2 border-blue-300 hover:scale-105 active:scale-95 uppercase tracking-wider text-sm">
+                                    Add to Meld
+                                </button>
+                                <button
+                                    disabled={!isMyTurn || selectedCards.length !== 1}
+                                    onClick={handleDiscard}
+                                    className="px-6 py-2 bg-gradient-to-t from-red-700 to-red-500 text-white font-black rounded-lg shadow-[0_0_15px_rgba(239,68,68,0.5)] border-2 border-red-300 hover:scale-105 active:scale-95 uppercase tracking-wider text-sm">
+                                    Discard
+                                </button>
+                            </div>
+
+                            {myPlayer && (
+                                <Reorder.Group axis="x" values={handCards} onReorder={(newOrder) => { if (peerId) actions.reorderHand(peerId, newOrder); }} className="flex -space-x-12 px-8">
+                                    <AnimatePresence initial={false}>
+                                        {handCards.map((card) => (
+                                            <Reorder.Item key={card.id} value={card}
+                                                whileDrag={{ scale: 1.1, zIndex: 100, boxShadow: "0px 10px 20px rgba(0,0,0,0.5)" }}
+                                                className="relative transition-transform duration-200">
+                                                <div className="hover:-translate-y-10 transition-transform duration-200 origin-bottom hover:z-20 relative">
+                                                    <Card card={card}
+                                                        isSelected={selectedCards.includes(card.id)}
+                                                        onClick={() => toggleSelect(card.id)}
+                                                        className="w-32 h-48 shadow-2xl ring-1 ring-black/50" />
+                                                </div>
+                                            </Reorder.Item>
+                                        ))}
+                                    </AnimatePresence>
+                                </Reorder.Group>
                             )}
                         </div>
                     </div>
 
-                    {/* Melds Area - Flexing properly */}
-                    <div className="flex-1 w-full h-full min-h-0 flex gap-4 lg:gap-8 justify-center overflow-hidden pb-2">
-                        {/* Team A */}
-                        <div className="flex-1 flex flex-col bg-slate-900/40 rounded-2xl border border-blue-500/20 overflow-hidden shadow-inner backdrop-blur-sm">
-                            <div className="h-10 lg:h-12 bg-blue-900/30 flex items-center justify-between px-4 border-b border-blue-500/20">
-                                <span className="text-sm font-bold text-blue-200 tracking-wider">TEAM A</span>
-                                <span className="text-xl lg:text-2xl font-bold text-blue-400 font-mono">{state.teams.A.roundScore}</span>
+                    {/* RIGHT: Mour Area */}
+                    <div className="flex flex-col items-center justify-end pb-12 pr-8 opacity-90">
+                        {/* Two distinct decks side-by-side/stacked with Real Cards */}
+                        <div className="flex gap-4">
+                            {/* Deck 1 (Red) */}
+                            <div className="relative w-16 h-24 transform -rotate-6 transition-transform hover:scale-110">
+                                <Card isFaceDown deckColor="red" className="w-full h-full shadow-lg" />
+                                <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-sm">11</div>
                             </div>
-                            <div className="flex-1 overflow-y-auto p-2 lg:p-4 space-y-3 custom-scrollbar">
-                                {state.teams.A.melds.length === 0 && (
-                                    <div className="h-full flex flex-col items-center justify-center opacity-20">
-                                        <div className="w-16 h-24 border-2 border-dashed border-white rounded mb-2"></div>
-                                        <span className="text-xs font-bold">No Melds</span>
-                                    </div>
-                                )}
-                                {state.teams.A.melds.map(meld => (
-                                    <div
-                                        key={meld.id}
-                                        onClick={() => isMyTurn && myPlayer?.teamId === 'A' && toggleMeldSelect(meld.id)}
-                                        className={`
-                                        group relative p-3 rounded-xl border-2 transition-all cursor-pointer bg-slate-950/30
-                                        ${selectedMeldId === meld.id
-                                                ? 'border-yellow-400 ring-1 ring-yellow-400/50 bg-blue-900/20'
-                                                : 'border-white/5 hover:border-blue-500/30 hover:bg-slate-900/60'
-                                            }
-                                    `}
-                                    >
-                                        <div className="flex items-center justify-between mb-2 px-1">
-                                            <div className="flex gap-2">
-                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${meld.clean ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-slate-700/50 text-slate-400 border border-white/10'}`}>
-                                                    {meld.type} {meld.clean ? 'CLEAN' : ''}
-                                                </span>
-                                                {calculateMeldBonus(meld) > 0 && (
-                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                                                        {calculateMeldBonus(meld)}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <span className="text-[10px] text-white/20 font-mono">#{meld.cards.length}</span>
-                                        </div>
-                                        <div className="flex justify-center -space-x-8 lg:-space-x-10 px-4 pb-2">
-                                            {meld.cards.map((c, idx) => (
-                                                <div
-                                                    key={c.id}
-                                                    className="relative transition-transform duration-200 group-hover:-translate-y-2 group-hover:scale-105"
-                                                    style={{ zIndex: idx }}
-                                                >
-                                                    <Card card={c} className="w-16 h-24 lg:w-20 lg:h-32 shadow-lg ring-1 ring-black/30" />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
+                            {/* Deck 2 (Blue/Green? - Using Blue as requested/default) */}
+                            <div className="relative w-16 h-24 transform rotate-6 transition-transform hover:scale-110">
+                                <Card isFaceDown deckColor="blue" className="w-full h-full shadow-lg" />
+                                <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-sm">11</div>
                             </div>
                         </div>
+                        <div className="mt-4 text-xs font-black text-white/50 bg-black/30 px-3 py-1 rounded-full uppercase tracking-widest">
+                            Mour Area
+                        </div>
 
-                        {/* Team B */}
-                        <div className="flex-1 flex flex-col bg-slate-900/40 rounded-2xl border border-red-500/20 overflow-hidden shadow-inner backdrop-blur-sm">
-                            <div className="h-10 lg:h-12 bg-red-900/30 flex items-center justify-between px-4 border-b border-red-500/20">
-                                <span className="text-sm font-bold text-red-200 tracking-wider">TEAM B</span>
-                                <span className="text-xl lg:text-2xl font-bold text-red-400 font-mono">{state.teams.B.roundScore}</span>
-                            </div>
-                            <div className="flex-1 overflow-y-auto p-2 lg:p-4 space-y-3 custom-scrollbar">
-                                {state.teams.B.melds.length === 0 && (
-                                    <div className="h-full flex flex-col items-center justify-center opacity-20">
-                                        <div className="w-16 h-24 border-2 border-dashed border-white rounded mb-2"></div>
-                                        <span className="text-xs font-bold">No Melds</span>
-                                    </div>
-                                )}
-                                {state.teams.B.melds.map(meld => (
-                                    <div
-                                        key={meld.id}
-                                        onClick={() => isMyTurn && myPlayer?.teamId === 'B' && toggleMeldSelect(meld.id)}
-                                        className={`
-                                        group relative p-3 rounded-xl border-2 transition-all cursor-pointer bg-slate-950/30
-                                        ${selectedMeldId === meld.id
-                                                ? 'border-yellow-400 ring-1 ring-yellow-400/50 bg-red-900/20'
-                                                : 'border-white/5 hover:border-red-500/30 hover:bg-slate-900/60'
-                                            }
-                                    `}
-                                    >
-                                        <div className="flex items-center justify-between mb-2 px-1">
-                                            <div className="flex gap-2">
-                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${meld.clean ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-slate-700/50 text-slate-400 border border-white/10'}`}>
-                                                    {meld.type} {meld.clean ? 'CLEAN' : ''}
-                                                </span>
-                                                {calculateMeldBonus(meld) > 0 && (
-                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                                                        {calculateMeldBonus(meld)}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <span className="text-[10px] text-white/20 font-mono">#{meld.cards.length}</span>
-                                        </div>
-                                        <div className="flex justify-center -space-x-8 lg:-space-x-10 px-4 pb-2">
-                                            {meld.cards.map((c, idx) => (
-                                                <div
-                                                    key={c.id}
-                                                    className="relative transition-transform duration-200 group-hover:-translate-y-2 group-hover:scale-105"
-                                                    style={{ zIndex: idx }}
-                                                >
-                                                    <Card card={c} className="w-16 h-24 lg:w-20 lg:h-32 shadow-lg ring-1 ring-black/30" />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                        <div className="mt-4 text-[10px] text-white/40 font-mono text-center">
+                            Phase: {state.turnPhase}
+                            <br />
+                            Turn: {isMyTurn ? 'YOU' : state.currentTurnPlayerId?.slice(0, 4)}
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Action Bar & Hand remains fixed at bottom, but now cleaner */}
-            {myPlayer && (
-                <div className="h-16 bg-black/60 flex items-center justify-center gap-4 relative z-20">
-                    <button
-                        disabled={!isMyTurn || selectedCards.length === 0}
-                        className="px-6 py-2 bg-yellow-600 rounded disabled:opacity-50 font-bold shadow-lg hover:scale-105 transition-all text-sm"
-                        onClick={() => {
-                            const cards = handCards.filter(c => selectedCards.includes(c.id));
-                            if (peerId) actions.meldCards(peerId, cards);
-                            setSelectedCards([]);
-                            setSelectedMeldId(null);
-                        }}
-                    >
-                        MELD ({selectedCards.length})
-                    </button>
-
-                    <button
-                        disabled={!isMyTurn || selectedCards.length !== 1}
-                        className="px-6 py-2 bg-red-600 rounded disabled:opacity-50 font-bold shadow-lg hover:scale-105 transition-all text-sm"
-                        onClick={() => {
-                            if (selectedCards.length === 1 && peerId) {
-                                actions.discardCard(peerId, selectedCards[0]);
-                                setSelectedCards([]);
-                                setSelectedMeldId(null);
-                            }
-                        }}
-                    >
-                        DISCARD
-                    </button>
-
-                    <button
-                        disabled={!isMyTurn || selectedCards.length === 0 || !selectedMeldId}
-                        className="px-6 py-2 bg-blue-600 rounded disabled:opacity-50 font-bold shadow-lg hover:scale-105 transition-all text-sm flex flex-col items-center leading-tight"
-                        onClick={() => {
-                            if (!peerId || !selectedMeldId) return;
-                            const cards = handCards.filter(c => selectedCards.includes(c.id));
-
-                            actions.addToMeld(peerId, selectedMeldId, cards);
-
-                            setSelectedCards([]);
-                            setSelectedMeldId(null);
-                        }}
-                    >
-                        <span>ADD TO MELD</span>
-                        {!selectedMeldId && selectedCards.length > 0 && <span className="text-[9px] font-normal opacity-75">(Select a meld)</span>}
-                    </button>
-                </div>
-            )}
-
-            {/* Player Hand */}
-            <div className="h-64 bg-black/80 p-4 flex items-end justify-center overflow-x-auto relative z-10">
-                {!myPlayer && (
-                    <div className="text-white/50 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                        Spectating / Waiting to join...
-                    </div>
-                )}
-
-                {myPlayer && (
-                    <Reorder.Group
-                        axis="x"
-                        values={handCards}
-                        onReorder={(newOrder) => {
-                            // Optimistic update handled by Reorder?
-                            // No, we need to dispatch.
-                            // But Reorder needs local state ideally for smooth drag?
-                            // useGame hook drives `handCards` from state.
-                            // dispatch sends to host (async).
-                            // This might cause jitter.
-                            // Ideally we need local state that syncs with remote.
-                            // But let's try direct dispatch first.
-                            if (peerId) actions.reorderHand(peerId, newOrder);
-                        }}
-                        className="flex -space-x-12 px-12 pt-8"
-                    // Removed hover:space-x-2 for fixed overlap
-                    >
-                        <AnimatePresence initial={false}>
-                            {handCards.map((card) => (
-                                <Reorder.Item
-                                    key={card.id}
-                                    value={card}
-                                    initial={{ y: 200, opacity: 0 }}
-                                    animate={{ y: 0, opacity: 1 }}
-                                    exit={{ y: 200, opacity: 0 }}
-                                    whileDrag={{
-                                        scale: 1.1,
-                                        zIndex: 100,
-                                        boxShadow: "0px 10px 20px rgba(0,0,0,0.5)"
-                                    }}
-                                    transition={{ duration: 0.2 }}
-                                    className="relative transition-transform duration-200"
-                                // Removed the hover transform in Card parent?
-                                // We need to keep Card generic but remove parent hover.
-                                >
-                                    <div className="hover:-translate-y-6 transition-transform duration-200">
-                                        <Card
-                                            card={card}
-                                            isSelected={selectedCards.includes(card.id)}
-                                            onClick={() => toggleSelect(card.id)}
-                                        />
-                                    </div>
-                                </Reorder.Item>
-                            ))}
-                        </AnimatePresence>
-                    </Reorder.Group>
-                )}
             </div>
         </div>
     );

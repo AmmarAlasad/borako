@@ -3,16 +3,16 @@ import { motion } from 'framer-motion';
 import { cn } from '../../lib/utils';
 
 interface CardProps {
-    card?: CardType; // Make card optional if purely showing a back (though usually we pass it)
+    card?: CardType;
     isFaceDown?: boolean;
     isSelected?: boolean;
     onClick?: () => void;
     className?: string;
     style?: React.CSSProperties;
+    deckColor?: 'red' | 'blue'; // New prop
 }
 
-export function Card({ card, isFaceDown, isSelected, onClick, className, style }: CardProps) {
-    // ... helper ...
+export function Card({ card, isFaceDown, isSelected, onClick, className, style, deckColor = 'blue' }: CardProps) {
     const getRankName = (r: string) => {
         if (r === 'A') return 'ace';
         if (r === 'J') return 'jack';
@@ -21,23 +21,28 @@ export function Card({ card, isFaceDown, isSelected, onClick, className, style }
         return r;
     };
 
-    // If face down, render back
+    // If face down, render back image
     if (isFaceDown) {
+        const backImage = deckColor === 'red' ? 'face_card_red.svg' : 'face_card_blue.svg';
         return (
             <motion.div
                 layoutId={card?.id ? `back-${card.id}` : undefined}
                 className={cn(
-                    "relative w-24 h-36 bg-blue-900 rounded-lg shadow-md select-none border-2 border-white/20",
+                    "relative w-24 h-36 rounded-lg shadow-md select-none border border-black/10 overflow-hidden bg-white",
                     className
                 )}
-                style={{
-                    ...style,
-                    backgroundImage: 'repeating-linear-gradient(45deg, #1e3a8a 0px, #1e3a8a 10px, #172554 10px, #172554 20px)'
-                }}
+                style={style}
             >
-                <div className="absolute inset-2 border border-white/10 rounded-sm flex items-center justify-center">
-                    <span className="text-2xl font-bold text-white/20">B</span>
-                </div>
+                <img
+                    src={`/cards/${backImage}`}
+                    alt="Card Back"
+                    className="w-full h-full object-cover scale-105"
+                    onError={(e) => {
+                        // Fallback if image fails or missing
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.parentElement!.style.backgroundColor = deckColor === 'red' ? '#7f1d1d' : '#1e3a8a';
+                    }}
+                />
             </motion.div>
         );
     }
