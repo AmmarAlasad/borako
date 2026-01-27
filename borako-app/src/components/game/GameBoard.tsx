@@ -309,7 +309,7 @@ export function GameBoard() {
     const myPlayer = state.players.find(p => p.id === peerId);
 
     // Logic to identify teammate and enemies for 4-player view (or 2-player adaptation)
-    const myTeamId = myPlayer?.teamId;
+    const myTeamId = myPlayer?.teamId || 'A'; // Default to A if observer or error
     const teammate = state.players.find(p => p.id !== peerId && p.teamId === myTeamId);
     // get enemies (different team)
     const enemies = state.players.filter(p => p.teamId !== myTeamId);
@@ -319,6 +319,17 @@ export function GameBoard() {
 
     const isMyTurn = state.currentTurnPlayerId === peerId;
     const handCards = myPlayer?.hand || [];
+
+    // Dynamic Team Sides
+    const leftTeamId = myTeamId;
+    const rightTeamId = myTeamId === 'A' ? 'B' : 'A';
+    const leftTeam = state.teams[leftTeamId];
+    const rightTeam = state.teams[rightTeamId];
+
+    // Mour Counter
+    // A team "has taken mour" means 1 pile is gone. 
+    // moursRemaining = 2 - (A_taken ? 1 : 0) - (B_taken ? 1 : 0)
+    const moursRemaining = 2 - (state.teams.A.hasTakenMour ? 1 : 0) - (state.teams.B.hasTakenMour ? 1 : 0);
 
     const toggleSelect = (cardId: string) => {
         setSelectedCards(prev =>
@@ -464,18 +475,20 @@ export function GameBoard() {
                         )}
                     </div>
 
-                    {/* CENTER LEFT: Team A Melds */}
+                    {/* CENTER LEFT: My/Left Team Melds */}
                     <div className="bg-black/20 rounded-l-2xl border-r border-white/20 p-4 relative flex flex-col">
-                        <div className="text-xs font-black text-blue-400 opacity-80 tracking-[0.2em] uppercase mb-2">Team A Melds</div>
-                        <div className="flex-1 flex flex-wrap content-start gap-2 overflow-visible"> {/* Removed scroll, allow wrap */}
-                            {(state.teams?.A?.melds || []).map(meld => (
+                        <div className={`text-xs font-black ${leftTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2`}>
+                            Team {leftTeamId} Melds {leftTeamId === myTeamId ? '(YOU)' : ''}
+                        </div>
+                        <div className="flex-1 flex flex-wrap content-start gap-2 overflow-visible">
+                            {(leftTeam?.melds || []).map(meld => (
                                 <div key={meld.id}
-                                    onClick={() => isMyTurn && myPlayer?.teamId === 'A' && toggleMeldSelect(meld.id)}
+                                    onClick={() => isMyTurn && myPlayer?.teamId === leftTeamId && toggleMeldSelect(meld.id)}
                                     className={`relative group transition-all cursor-pointer transform hover:scale-105 ${selectedMeldId === meld.id ? 'ring-2 ring-yellow-400 rounded-lg bg-white/5' : ''}`}>
-                                    <div className="flex -space-x-8"> {/* Tighter overlap for melds */}
+                                    <div className="flex -space-x-8">
                                         {meld.cards.map((c, idx) => (
                                             <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
-                                                <Card card={c} className="w-20 h-28 md:w-24 md:h-36 border border-black/20" /> {/* Larger meld cards */}
+                                                <Card card={c} className="w-20 h-28 md:w-24 md:h-36 border border-black/20" />
                                             </div>
                                         ))}
                                     </div>
@@ -487,13 +500,15 @@ export function GameBoard() {
                         </div>
                     </div>
 
-                    {/* CENTER RIGHT: Team B Melds */}
+                    {/* CENTER RIGHT: Enemy/Right Team Melds */}
                     <div className="bg-black/20 rounded-r-2xl border-l border-white/20 p-4 relative flex flex-col pl-6">
-                        <div className="text-xs font-black text-red-400 opacity-80 tracking-[0.2em] uppercase mb-2 text-right">Team B Melds</div>
+                        <div className={`text-xs font-black ${rightTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2 text-right`}>
+                            Team {rightTeamId} Melds {rightTeamId !== myTeamId ? '(ENEMY)' : ''}
+                        </div>
                         <div className="flex-1 flex flex-wrap content-start gap-2 justify-end overflow-visible">
-                            {(state.teams?.B?.melds || []).map(meld => (
+                            {(rightTeam?.melds || []).map(meld => (
                                 <div key={meld.id}
-                                    onClick={() => isMyTurn && myPlayer?.teamId === 'B' && toggleMeldSelect(meld.id)}
+                                    onClick={() => isMyTurn && myPlayer?.teamId === rightTeamId && toggleMeldSelect(meld.id)}
                                     className={`relative group transition-all cursor-pointer transform hover:scale-105 ${selectedMeldId === meld.id ? 'ring-2 ring-yellow-400 rounded-lg bg-white/5' : ''}`}>
                                     <div className="flex -space-x-8">
                                         {meld.cards.map((c, idx) => (
@@ -636,16 +651,25 @@ export function GameBoard() {
                     <div className="flex flex-col items-center justify-end pb-12 pr-8 opacity-90">
                         {/* Two distinct decks stacked: one vertical, one horizontal */}
                         <div className="relative w-24 h-24 flex items-center justify-center">
-                            {/* Pile 1: Vertical */}
-                            <div className="absolute transition-transform hover:scale-110 z-0">
-                                <Card isFaceDown deckColor="red" className="w-16 h-24 shadow-lg" />
-                                <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-sm">11</div>
-                            </div>
-                            {/* Pile 2: Horizontal (Rotated 90deg) */}
-                            <div className="absolute transition-transform hover:scale-110 z-10 rotate-90">
-                                <Card isFaceDown deckColor="blue" className="w-16 h-24 shadow-lg" />
-                                <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-sm -rotate-90">11</div>
-                            </div>
+                            {/* Pile 1: Vertical (Only if at least 1 mour left) */}
+                            {moursRemaining > 0 && (
+                                <div className="absolute transition-transform hover:scale-110 z-0">
+                                    <Card isFaceDown deckColor="red" className="w-16 h-24 shadow-lg" />
+                                    <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-sm">11</div>
+                                </div>
+                            )}
+                            {/* Pile 2: Horizontal (Only if 2 mours left) */}
+                            {moursRemaining > 1 && (
+                                <div className="absolute transition-transform hover:scale-110 z-10 rotate-90">
+                                    <Card isFaceDown deckColor="blue" className="w-16 h-24 shadow-lg" />
+                                    <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-sm -rotate-90">11</div>
+                                </div>
+                            )}
+                            {moursRemaining === 0 && (
+                                <div className="text-white/20 text-xs font-bold uppercase tracking-widest border-2 border-white/10 border-dashed p-4 rounded-lg">
+                                    No Mour
+                                </div>
+                            )}
                         </div>
                         <div className="mt-4 text-xs font-black text-white/50 bg-black/30 px-3 py-1 rounded-full uppercase tracking-widest">
                             Mour Area
