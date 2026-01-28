@@ -612,7 +612,7 @@ export function GameBoard() {
                             <div className="relative w-36 h-[13.5rem]">
                                 {[0, 1, 2].map(i => (
                                     <div key={i} className="absolute inset-0" style={{ transform: `translate(-${i * 3}px, -${i * 3}px)` }}>
-                                        <Card isFaceDown deckColor="blue" className="w-full h-full shadow-lg" />
+                                        <Card isFaceDown deckColor={state.deck.length % 2 === 0 ? 'blue' : 'red'} className="w-full h-full shadow-lg" />
                                     </div>
                                 ))}
                             </div>
@@ -624,10 +624,10 @@ export function GameBoard() {
                     <div className="relative flex flex-col justify-end items-center h-full">
 
                         {/* 1. DISCARD AREA (Spread Above Hand) */}
-                        <div className="mb-4 h-24 w-full flex justify-center items-end"
+                        <div className="mb-4 w-full flex justify-center items-end"
                             onClick={() => isMyTurn && state.turnPhase === 'WAITING_FOR_DRAW' && peerId && actions.sweepPile(peerId)}>
                             {state.discardPile.length > 0 ? (
-                                <div className="relative h-full flex items-center cursor-pointer group hover:scale-105 transition-transform">
+                                <div className="relative h-[7.2rem] flex items-center cursor-pointer group hover:scale-105 transition-transform bg-slate-300/20 px-[4rem] py-2 rounded-2xl border border-white/20 backdrop-blur-sm shadow-xl">
                                     {/* Fan the last 8 cards horizontally */}
                                     <div className="flex -space-x-8">
                                         {state.discardPile.slice(Math.max(0, state.discardPile.length - 8)).map((card) => (
@@ -636,13 +636,13 @@ export function GameBoard() {
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="ml-4 bg-black/60 px-3 py-1 rounded-full text-xs font-bold text-yellow-500 border border-yellow-500/30 opacity-60 group-hover:opacity-100 transition-opacity">
+                                    <div className="ml-8 bg-black/60 px-3 py-1 rounded-full text-xs font-bold text-yellow-500 border border-yellow-500/30 opacity-80 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                                         DISCARD PILE ({state.discardPile.length})
                                     </div>
                                 </div>
                             ) : (
-                                <div className="w-32 h-20 border-2 border-dashed border-white/10 rounded-lg flex items-center justify-center">
-                                    <span className="text-white/20 font-bold tracking-widest text-xs uppercase">Discard Empty</span>
+                                <div className="w-[15.6rem] h-[7.2rem] bg-slate-300/10 border-2 border-dashed border-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                                    <span className="text-white/40 font-bold tracking-widest text-xs uppercase">Discard Empty</span>
                                 </div>
                             )}
                         </div>
