@@ -720,13 +720,13 @@ export function GameBoard() {
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="ml-4 bg-black/60 px-3 py-1 rounded-full text-xs font-bold text-yellow-500 border border-yellow-500/30 opacity-60 group-hover:opacity-100 transition-opacity">
-                                        DISCARD PILE ({state.discardPile.length})
+                                    <div className="ml-6 bg-black/60 px-3 py-1 rounded-full text-xs font-bold text-yellow-500 border border-yellow-500/30 opacity-80 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                        {t.discardPileLabel} ({state.discardPile.length})
                                     </div>
                                 </div>
                             ) : (
-                                <div className="w-32 h-20 border-2 border-dashed border-white/10 rounded-lg flex items-center justify-center">
-                                    <span className="text-white/20 font-bold tracking-widest text-xs uppercase">Discard Empty</span>
+                                <div className="w-[15.6rem] h-[7.2rem] bg-slate-300/10 border-2 border-dashed border-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                                    <span className="text-white/40 font-bold tracking-widest text-xs uppercase">{t.discardEmpty}</span>
                                 </div>
                             )}
                         </div>
