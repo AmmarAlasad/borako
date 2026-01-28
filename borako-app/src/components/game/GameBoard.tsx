@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { Card } from './Card';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
@@ -126,6 +126,35 @@ export function GameBoard() {
             setIsLoading(false);
         }
     };
+
+    // --- BOT LOGIC ---
+    useEffect(() => {
+        if (!isHost || state.phase !== 'PLAYING') return;
+
+        const currentPlayer = state.players.find(p => p.id === state.currentTurnPlayerId);
+        if (!currentPlayer || !currentPlayer.id.startsWith('bot-')) return;
+
+        const botId = currentPlayer.id;
+
+        // Bot Turn Step 1: Draw
+        if (state.turnPhase === 'WAITING_FOR_DRAW') {
+            const timer = setTimeout(() => {
+                actions.drawCard(botId);
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+
+        // Bot Turn Step 2: Discard IMMEDIATELY (The card just drawn)
+        if (state.turnPhase === 'PLAYING') {
+            // "always draw and throw the same card"
+            if (state.lastDrawnCardId) {
+                const timer = setTimeout(() => {
+                    actions.discardCard(botId, state.lastDrawnCardId!, true);
+                }, 1000);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [state.currentTurnPlayerId, state.turnPhase, state.phase, isHost, state.lastDrawnCardId, actions]);
 
     // 1. GAME END Screen
     if (state.phase === 'GAME_END') {
@@ -458,9 +487,27 @@ export function GameBoard() {
     const teammate = state.players.find(p => p.id !== peerId && p.teamId === myTeamId);
     // get enemies (different team)
     const enemies = state.players.filter(p => p.teamId !== myTeamId);
-    // Assign Left/Right arbitrarily or by index for consistency
-    const enemyLeft = enemies[0];
-    const enemyRight = enemies[1]; // Might be undefined in 3-player or 2-player games
+
+    // Position enemies relative to ME (Counter-Clockwise View)
+    // In 4-player [A1, B1, A2, B2], if I am A1 (0): R=3(B2), L=1(B1).
+    // Turn order is 0 -> 3 -> 2 -> 1 (Me -> Right -> Teammate -> Left)
+    let enemyLeft = enemies[0];
+    let enemyRight = enemies[1];
+
+    if (state.players.length === 4 && myPlayer) {
+        const myIndex = state.players.findIndex(p => p.id === peerId);
+        if (myIndex !== -1) {
+            const rightIndex = (myIndex - 1 + 4) % 4;
+            const leftIndex = (myIndex + 1) % 4;
+
+            // Assign based on calculated indices (Validation check: ensure they are actually enemies)
+            const pRight = state.players[rightIndex];
+            const pLeft = state.players[leftIndex];
+
+            if (pRight.teamId !== myTeamId) enemyRight = pRight;
+            if (pLeft.teamId !== myTeamId) enemyLeft = pLeft;
+        }
+    }
 
     const isMyTurn = state.currentTurnPlayerId === peerId;
     const handCards = myPlayer?.hand || [];
