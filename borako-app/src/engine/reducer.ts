@@ -138,8 +138,20 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             // Setup Deck
             const deck = createGameDeck();
 
-            // Deal 11 to each player
-            const players = state.players.map(p => ({ ...p, hand: [] as Card[] }));
+            // Reorder players to alternate Teams (A, B, A, B...)
+            // This ensures turn order: Friend -> Enemy -> Friend -> Enemy
+            const teamA = state.players.filter(p => p.teamId === 'A');
+            const teamB = state.players.filter(p => p.teamId === 'B');
+            const sortedPlayers: typeof state.players = [];
+
+            const maxLen = Math.max(teamA.length, teamB.length);
+            for (let i = 0; i < maxLen; i++) {
+                if (teamA[i]) sortedPlayers.push(teamA[i]);
+                if (teamB[i]) sortedPlayers.push(teamB[i]);
+            }
+
+            // Deal 11 to each player using the SORTED list
+            const players = sortedPlayers.map(p => ({ ...p, hand: [] as Card[] }));
 
             // Deal Mour Piles (11 each)
             // Team A Mour
@@ -461,7 +473,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             // So I pick up mour and END TURN.
 
             let nextState = { ...state };
-            let nextPlayerIndex = (state.players.findIndex(p => p.id === player.id) + 1) % state.players.length;
+            let nextPlayerIndex = (state.players.findIndex(p => p.id === player.id) - 1 + state.players.length) % state.players.length;
 
             // Apply Discard
             nextState.players = nextState.players.map(p => p.id === player.id ? { ...p, hand: newHand } : p);
