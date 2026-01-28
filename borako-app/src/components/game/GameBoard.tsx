@@ -483,6 +483,8 @@ export function GameBoard() {
                         <div className="flex-1 flex flex-wrap content-start gap-2 overflow-visible">
                             {(leftTeam?.melds || []).map(meld => (
                                 <div key={meld.id}
+                                    id={`meld-drop-${meld.id}`}
+                                    data-meld-id={meld.id}
                                     onClick={() => isMyTurn && myPlayer?.teamId === leftTeamId && toggleMeldSelect(meld.id)}
                                     className={`relative group transition-all cursor-pointer transform hover:scale-105 ${selectedMeldId === meld.id ? 'ring-2 ring-yellow-400 rounded-lg bg-white/5' : ''}`}>
                                     <div className="flex -space-x-8">
@@ -508,6 +510,8 @@ export function GameBoard() {
                         <div className="flex-1 flex flex-wrap content-start gap-2 justify-end overflow-visible">
                             {(rightTeam?.melds || []).map(meld => (
                                 <div key={meld.id}
+                                    id={`meld-drop-${meld.id}`}
+                                    data-meld-id={meld.id}
                                     onClick={() => isMyTurn && myPlayer?.teamId === rightTeamId && toggleMeldSelect(meld.id)}
                                     className={`relative group transition-all cursor-pointer transform hover:scale-105 ${selectedMeldId === meld.id ? 'ring-2 ring-yellow-400 rounded-lg bg-white/5' : ''}`}>
                                     <div className="flex -space-x-8">
@@ -632,11 +636,25 @@ export function GameBoard() {
                                         {handCards.map((card) => (
                                             <Reorder.Item key={card.id} value={card}
                                                 whileDrag={{ scale: 1.1, zIndex: 100, boxShadow: "0px 10px 20px rgba(0,0,0,0.5)" }}
+                                                onDragEnd={(_event, info) => {
+                                                    // Detection Logic
+                                                    const dropTarget = document.elementFromPoint(info.point.x, info.point.y);
+                                                    const meldContainer = dropTarget?.closest('[data-meld-id]');
+
+                                                    if (meldContainer && isMyTurn && state.turnPhase === 'PLAYING' && peerId) {
+                                                        const meldId = meldContainer.getAttribute('data-meld-id');
+                                                        if (meldId) {
+                                                            actions.addToMeld(peerId, meldId, [card]);
+                                                        }
+                                                    }
+                                                }}
                                                 className="relative transition-transform duration-200">
                                                 <div className="hover:-translate-y-10 transition-transform duration-200 origin-bottom hover:z-20 relative">
                                                     <Card card={card}
                                                         isSelected={selectedCards.includes(card.id)}
                                                         onClick={() => toggleSelect(card.id)}
+                                                        disableLayout={true} // Disable internal layout
+                                                        disableHover={true} // Disable internal hover
                                                         className="w-32 h-48 shadow-2xl ring-1 ring-black/50" />
                                                 </div>
                                             </Reorder.Item>

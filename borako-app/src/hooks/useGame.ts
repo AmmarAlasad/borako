@@ -90,6 +90,10 @@ export function useGame() {
             handleAction({ type: 'DISCARD_CARD', payload: { playerId, cardId } });
         },
         reorderHand: (playerId: string, newOrder: Card[]) => {
+            // OPTIMISTIC UPDATE: Dispatch immediately to avoid UI glitch for clients
+            if (playerId === peerId && !isHost()) {
+                dispatch({ type: 'REORDER_HAND', payload: { playerId, newOrder } });
+            }
             handleAction({ type: 'REORDER_HAND', payload: { playerId, newOrder } });
         },
         addToMeld: (playerId: string, meldId: string, cards: Card[]) => {

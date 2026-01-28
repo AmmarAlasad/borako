@@ -10,9 +10,11 @@ interface CardProps {
     className?: string;
     style?: React.CSSProperties;
     deckColor?: 'red' | 'blue'; // New prop
+    disableLayout?: boolean; // NEW: Prevent layoutId conflicts
+    disableHover?: boolean; // NEW: Prevent hover/tap conflicts
 }
 
-export function Card({ card, isFaceDown, isSelected, onClick, className, style, deckColor = 'blue' }: CardProps) {
+export function Card({ card, isFaceDown, isSelected, onClick, className, style, deckColor = 'blue', disableLayout, disableHover }: CardProps) {
     const getRankName = (r: string) => {
         if (r === 'A') return 'ace';
         if (r === 'J') return 'jack';
@@ -34,6 +36,7 @@ export function Card({ card, isFaceDown, isSelected, onClick, className, style, 
                 style={style}
             >
                 <img
+                    draggable={false}
                     src={`/cards/${backImage}`}
                     alt="Card Back"
                     className="w-full h-full object-cover scale-105"
@@ -59,18 +62,20 @@ export function Card({ card, isFaceDown, isSelected, onClick, className, style, 
 
     return (
         <motion.div
-            layoutId={card.id}
+            layoutId={disableLayout ? undefined : card.id}
             className={cn(
-                "relative w-24 h-36 bg-white rounded-lg shadow-md select-none cursor-pointer transition-transform hover:scale-105",
+                "relative w-24 h-36 bg-white rounded-lg shadow-md select-none cursor-pointer",
+                !disableHover && "transition-transform hover:scale-105",
                 isSelected && "ring-4 ring-blue-500 -translate-y-4 shadow-xl z-10",
                 className
             )}
             onClick={onClick}
             style={style}
-            whileHover={{ y: -5 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={disableHover ? undefined : { y: -5 }}
+            whileTap={disableHover ? undefined : { scale: 0.95 }}
         >
             <img
+                draggable={false}
                 src={`/cards/${fileName}`}
                 alt={`${card.rank} of ${card.suit}`}
                 className="w-full h-full object-contain p-1"

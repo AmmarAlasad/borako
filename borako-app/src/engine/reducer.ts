@@ -164,7 +164,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
             const players = state.players.map(p => {
                 if (p.id === action.payload.playerId) {
-                    return { ...p, hand: sortHand([...p.hand, card]) }; // AUTO SORT ON DRAW
+                    return { ...p, hand: [...p.hand, card] }; // NO AUTO SORT
                 }
                 return p;
             });
@@ -187,7 +187,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
             const players = state.players.map(p => {
                 if (p.id === action.payload.playerId) {
-                    return { ...p, hand: sortHand([...p.hand, ...discardPile]) }; // AUTO SORT ON SWEEP
+                    return { ...p, hand: [...p.hand, ...discardPile] }; // NO AUTO SORT
                 }
                 return p;
             });
