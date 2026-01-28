@@ -600,7 +600,7 @@ export function GameBoard() {
                 <div className="grid grid-cols-[15%_70%_15%] pt-2">
 
                     {/* LEFT: Deck Only */}
-                    <div className="flex items-end justify-center pb-8">
+                    <div className="flex items-end justify-start pl-12 pb-16">
                         <div className="relative group cursor-pointer hover:scale-105 transition-transform"
                             onClick={() => {
                                 if (!isMyTurn || state.turnPhase !== 'WAITING_FOR_DRAW') { // Only allow if correct phase
@@ -609,9 +609,9 @@ export function GameBoard() {
                                 if (isMyTurn && state.turnPhase === 'WAITING_FOR_DRAW' && peerId) actions.drawCard(peerId);
                             }}>
                             {/* Deck Stack Visual (Using Real Cards) */}
-                            <div className="relative w-24 h-36">
+                            <div className="relative w-36 h-[13.5rem]">
                                 {[0, 1, 2].map(i => (
-                                    <div key={i} className="absolute inset-0" style={{ transform: `translate(-${i * 2}px, -${i * 2}px)` }}>
+                                    <div key={i} className="absolute inset-0" style={{ transform: `translate(-${i * 3}px, -${i * 3}px)` }}>
                                         <Card isFaceDown deckColor="blue" className="w-full h-full shadow-lg" />
                                     </div>
                                 ))}
@@ -709,19 +709,19 @@ export function GameBoard() {
                     {/* RIGHT: Mour Area */}
                     <div className="flex flex-col items-center justify-end pb-12 pr-8 opacity-90">
                         {/* Two distinct decks stacked: one vertical, one horizontal */}
-                        <div className="relative w-24 h-24 flex items-center justify-center">
+                        <div className="relative w-36 h-36 flex items-center justify-center">
                             {/* Pile 1: Vertical (Only if at least 1 mour left) */}
                             {moursRemaining > 0 && (
                                 <div className="absolute transition-transform hover:scale-110 z-0">
-                                    <Card isFaceDown deckColor="red" className="w-16 h-24 shadow-lg" />
-                                    <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-sm">11</div>
+                                    <Card isFaceDown deckColor="red" className="w-24 h-36 shadow-lg" />
+                                    <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-xl">11</div>
                                 </div>
                             )}
                             {/* Pile 2: Horizontal (Only if 2 mours left) */}
                             {moursRemaining > 1 && (
                                 <div className="absolute transition-transform hover:scale-110 z-10 rotate-90">
-                                    <Card isFaceDown deckColor="blue" className="w-16 h-24 shadow-lg" />
-                                    <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-sm -rotate-90">11</div>
+                                    <Card isFaceDown deckColor="blue" className="w-24 h-36 shadow-lg" />
+                                    <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-xl -rotate-90">11</div>
                                 </div>
                             )}
                             {moursRemaining === 0 && (
