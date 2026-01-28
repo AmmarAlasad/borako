@@ -21,6 +21,8 @@ export const translations = {
         switchTeam: "Switch Team",
         back: "Back",
         join: "Join",
+        startGame: "START GAME",
+        addBot: "+ Add Bot",
 
 
         // Teams
@@ -58,6 +60,7 @@ export const translations = {
         mustMeld: "You must meld after sweeping!",
         drawFirst: "Draw a card first!",
         noTeammate: "No Teammate",
+        mourArea: "Mour Area",
         deck: "Deck",
         discardPileLabel: "DISCARD PILE",
         discardEmpty: "Discard Empty",
@@ -96,6 +99,8 @@ export const translations = {
         switchTeam: "تبديل الفريق",
         back: "رجوع",
         join: "انضمام",
+        startGame: "ابدأ اللعبة",
+        addBot: "+ إضافة بوت",
 
 
         // Teams
@@ -133,10 +138,11 @@ export const translations = {
         mustMeld: "يجب عليك إنزال فتحة بعد التكويش!",
         drawFirst: "اسحب ورقة أولاً!",
         noTeammate: "لا يوجد زميل",
+        mourArea: "منطقة المور",
         deck: "كومة السحب",
         discardPileLabel: "كومة الرمي",
         discardEmpty: "الكومة فارغة",
-        meldBtn: "إنزال",
+        meldBtn: "فتح",
 
         // Inputs
         yourNameLabel: "اسمك",

@@ -128,7 +128,7 @@ export function GameBoard() {
                             Return to Lobby
                         </button>
                     ) : (
-                        <div className="text-slate-400 animate-pulse">Waiting for host...</div>
+                        <div className="text-slate-400 animate-pulse">{t.waiting}</div>
                     )}
                 </div>
             </div>
@@ -187,7 +187,7 @@ export function GameBoard() {
                             </button>
                         ) : (
                             <div className="flex items-center text-slate-400 animate-pulse">
-                                <span className="mr-2">⏳</span> Waiting for host to start next round...
+                                <span className="mr-2">⏳</span> {t.waiting}
                             </div>
                         )}
                     </div>
@@ -341,7 +341,7 @@ export function GameBoard() {
                                 {peerId || 'Generating...'}
                             </button>
                             {!peerId && (
-                                <div className="text-xs text-yellow-500 mt-2 text-right">Connecting to Multiplayer Server...</div>
+                                <div className="text-xs text-yellow-500 mt-2 text-right">{t.connecting}</div>
                             )}
                         </div>
                     </div>
@@ -388,7 +388,7 @@ export function GameBoard() {
                                             <div className="text-xs text-green-400 mt-1">{player.isHost ? 'HOST' : 'READY'}</div>
                                         </>
                                     ) : (
-                                        <div className="text-slate-600">Empty Slot</div>
+                                        <div className="text-slate-600">{t.emptySlot}</div>
                                     )}
                                 </div>
                             );
@@ -401,7 +401,7 @@ export function GameBoard() {
                                 className="bg-slate-800 hover:bg-slate-700 text-white px-8 py-4 rounded-xl font-bold transition-all border border-slate-700"
                                 onClick={() => actions.addBot(`Bot ${state.players.length + 1}`)}
                             >
-                                + Add Bot
+                                {t.addBot}
                             </button>
                         )}
                         <button
@@ -412,7 +412,7 @@ export function GameBoard() {
                                 }`}
                             onClick={() => isHost && actions.startGame()}
                         >
-                            {isHost ? "START GAME" : "Waiting for host to start the game"}
+                            {isHost ? t.startGame : t.waiting}
                         </button>
                     </div>
                 </div>
@@ -482,7 +482,7 @@ export function GameBoard() {
 
     const handleDiscard = () => {
         if (state.turnPhase === 'WAITING_FOR_DRAW') {
-            showToast("Draw a card first!");
+            showToast(t.drawFirst);
             return;
         }
         if (peerId && selectedCards.length === 1) {
@@ -815,7 +815,7 @@ export function GameBoard() {
                             )}
                         </div>
                         <div className="mt-4 text-xs font-black text-white/50 bg-black/30 px-3 py-1 rounded-full uppercase tracking-widest">
-                            Mour Area
+                            {t.mourArea}
                         </div>
 
                         <div className="mt-4 text-[10px] text-white/40 font-mono text-center">
