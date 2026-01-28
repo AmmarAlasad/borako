@@ -575,12 +575,12 @@ export function GameBoard() {
                     {/* LEFT COLUMN: Enemy 1 (Left) */}
                     <div className="flex items-center justify-start">
                         {enemyLeft && (
-                            <div className={`flex flex-row items-center gap-4 transition-all duration-300 ${enemyLeft.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
-                                {/* Stacked Cards (Vertical for side player - Extended) */}
-                                <div className="relative w-28 lg:w-32 flex flex-col items-center h-80 overflow-visible">
+                            <div className={`flex flex-row items-center gap-6 transition-all duration-300 ${enemyLeft.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
+                                {/* Vertical stack of Horizontal cards */}
+                                <div className="relative w-32 lg:w-48 flex flex-col items-center h-[28rem] overflow-visible">
                                     <div className="relative w-full h-full">
                                         {Array.from({ length: Math.min(enemyLeft.hand.length, 8) }).map((_, i) => (
-                                            <div key={i} className="absolute left-0 w-full h-20 transition-all hover:translate-x-2" style={{ top: `${i * 32}px` }}> {/* Increased spacing */}
+                                            <div key={i} className="absolute left-0 w-full h-32 transition-all hover:translate-x-2" style={{ top: `${i * 45}px` }}>
                                                 <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-full shadow-md" />
                                             </div>
                                         ))}
@@ -657,11 +657,11 @@ export function GameBoard() {
                     {/* RIGHT COLUMN: Enemy 2 (Right) */}
                     <div className="flex items-center justify-end">
                         {enemyRight && (
-                            <div className={`flex flex-row-reverse items-center gap-4 transition-all duration-300 ${enemyRight.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
-                                <div className="relative w-28 lg:w-32 flex flex-col items-center h-80 overflow-visible">
+                            <div className={`flex flex-row-reverse items-center gap-6 transition-all duration-300 ${enemyRight.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
+                                <div className="relative w-32 lg:w-48 flex flex-col items-center h-[28rem] overflow-visible">
                                     <div className="relative w-full h-full">
                                         {Array.from({ length: Math.min(enemyRight.hand.length, 8) }).map((_, i) => (
-                                            <div key={i} className="absolute right-0 w-full h-20 transition-all hover:-translate-x-2" style={{ top: `${i * 32}px` }}>
+                                            <div key={i} className="absolute right-0 w-full h-32 transition-all hover:-translate-x-2" style={{ top: `${i * 45}px` }}>
                                                 <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-full shadow-md" />
                                             </div>
                                         ))}
