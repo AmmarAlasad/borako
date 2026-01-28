@@ -19,6 +19,7 @@ export function GameBoard() {
     // Audio Refs
     const drawSound = useRef(new Audio('/sounds/card-draw.wav'));
     const discardSound = useRef(new Audio('/sounds/discard.wav'));
+    const shuffleSound = useRef(new Audio('/sounds/shuffle.wav'));
 
     const playSound = (audioRef: React.RefObject<HTMLAudioElement>) => {
         if (soundEnabled && audioRef.current) {
@@ -99,6 +100,77 @@ export function GameBoard() {
     const [joinHostId, setJoinHostId] = useState('');
     const [view, setView] = useState<'WELCOME' | 'JOIN'>('WELCOME');
     const [isLoading, setIsLoading] = useState(false);
+    const [isDealing, setIsDealing] = useState(false);
+    const [dealingCardIndex, setDealingCardIndex] = useState(-1); // -1: Not dealing, 0-10: Dealing cards 1-11 sequentially
+
+    // Dealing Animation Trigger
+    useEffect(() => {
+        if (state.phase === 'PLAYING') {
+            setIsDealing(true);
+            setDealingCardIndex(0);
+
+            // Play Sound (One-shot)
+            playSound(shuffleSound);
+
+            // Animate 44 cards distribution
+            const totalCards = 44;
+            const delayPerCard = 20; // ms (Very Fast)
+
+            const interval = setInterval(() => {
+                setDealingCardIndex(prev => {
+                    if (prev >= totalCards + 15) {
+                        clearInterval(interval);
+                        return prev;
+                    }
+                    return prev + 1;
+                });
+            }, delayPerCard);
+
+            const totalTime = totalCards * delayPerCard + 500; // ~1.4s total
+            const timer = setTimeout(() => {
+                setIsDealing(false);
+                setDealingCardIndex(-1);
+            }, totalTime);
+
+            return () => {
+                clearTimeout(timer);
+                clearInterval(interval);
+            };
+        }
+    }, [state.phase, state.roundNumber]);
+
+    // Helper to calculate how many cards should be visible in a player's hand during dealing
+    const getVisibleCardCount = (targetPlayerId: string, totalHandSize: number) => {
+        if (!isDealing) return totalHandSize;
+
+        // Find player's turn index (0-3) relative to the start of the game/round?
+        // Actually, let's look at state.players index.
+        const playerIndex = state.players.findIndex(p => p.id === targetPlayerId);
+        if (playerIndex === -1) return 0;
+
+        // Cards land after ~12 steps (480ms ~ 0.5s flight)
+        const landThreshold = 12;
+        const effectiveDealIndex = dealingCardIndex - landThreshold;
+
+        if (effectiveDealIndex < 0) return 0;
+
+        // Count how many cards in 0..effectiveDealIndex belong to THIS player (i % 4 == playerIndex)
+        // If effectiveDealIndex is N, number of full rounds is floor((N+1)/4).
+        // Plus one if the remainder covers this player.
+
+        // Example: N=4, Rounds=1 (0,1,2,3). Indices 0,1,2,3 dealt. Player 0 gets card 0, card 4? No card 4 is index 4.
+        // If effective is 4. Range 0,1,2,3,4.
+        // Player 0 gets: 0, 4. (2 cards)
+        // Player 1 gets: 1. (1 card)
+
+        const fullRounds = Math.floor((effectiveDealIndex + 1) / 4);
+        const remainder = (effectiveDealIndex + 1) % 4;
+
+        // If my index is < remainder, I got an extra card in the partial round
+        let count = fullRounds + (playerIndex < remainder ? 1 : 0);
+
+        return Math.min(count, totalHandSize);
+    };
 
     // Feedback Toast State (Hoisted to top)
     const showToast = (msg: string) => {
@@ -624,27 +696,28 @@ export function GameBoard() {
                 <div className="relative flex justify-center items-start">
                     {teammate ? (
                         <div className={`flex flex-col items-center transition-all duration-300 ${teammate.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
-                            {/* Stacked Card Backs (Extended Distribution) */}
-                            <div className="relative h-24 flex justify-center items-center">
-                                <div className="flex -space-x-8">
-                                    {Array.from({ length: Math.min(teammate.hand.length, 8) }).map((_, i) => (
+                            {/* Name Badge Above Cards */}
+                            <div className="mb-1 bg-black/50 px-3 py-1 rounded-full backdrop-blur-sm border border-white/20">
+                                <span className={`font-bold tracking-wide text-sm ${teammate.id === state.currentTurnPlayerId ? 'text-yellow-400' : 'text-blue-100'}`}>
+                                    {teammate.name.toUpperCase()}
+                                </span>
+                            </div>
+
+                            {/* Stacked Card Backs (Smaller) */}
+                            <div className="relative h-20 flex justify-center items-center">
+                                <div className="flex -space-x-6">
+                                    {Array.from({ length: teammate ? getVisibleCardCount(teammate.id, teammate.hand.length) : 0 }).map((_, i) => (
                                         <div key={i} className="relative hover:-translate-y-2 transition-transform">
-                                            <Card isFaceDown deckColor={i % 2 === 0 ? 'blue' : 'red'} className="w-24 h-36 lg:w-32 lg:h-48 shadow-md" />
+                                            <Card isFaceDown deckColor={i % 2 === 0 ? 'blue' : 'red'} className="w-16 h-24 shadow-md" />
                                         </div>
                                     ))}
                                 </div>
                                 {/* Enhanced Count Badge */}
                                 {teammate.hand.length > 8 && (
-                                    <div className="absolute -right-8 top-0 bg-yellow-500 text-black font-black text-xs px-2 py-1 rounded-full border border-white shadow-xl z-20">
+                                    <div className="absolute -right-6 top-0 bg-yellow-500 text-black font-black text-xs px-2 py-1 rounded-full border border-white shadow-xl z-20">
                                         +{teammate.hand.length - 8}
                                     </div>
                                 )}
-                            </div>
-
-                            <div className="mt-2 bg-black/50 px-4 py-1 rounded-full backdrop-blur-sm border border-white/20">
-                                <span className={`font-black tracking-wide text-lg ${teammate.id === state.currentTurnPlayerId ? 'text-yellow-400' : 'text-blue-100'}`}>
-                                    {teammate.name.toUpperCase()}
-                                </span>
                             </div>
                         </div>
                     ) : (
@@ -670,38 +743,122 @@ export function GameBoard() {
                 </div>
 
                 {/* --- MIDDLE ROW: Enemies + Melds --- */}
-                <div className="grid grid-cols-[15%_35%_35%_15%] h-full w-full gap-2">
+                <div className="grid grid-cols-[10%_40%_40%_10%] h-full w-full gap-3">
+
+                    {/* DEALING ANIMATION OVERLAY */}
+                    <AnimatePresence>
+                        {isDealing && (
+                            <motion.div
+                                layoutId="deck-container"
+                                className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none"
+                                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                            >
+                                <div className="relative w-36 h-[13.5rem] shadow-2xl">
+                                    {/* Static Deck Background */}
+                                    {[0, 1, 2].map(i => (
+                                        <div key={i} className="absolute inset-0" style={{ transform: `translate(-${i * 3}px, -${i * 3}px)` }}>
+                                            <Card isFaceDown deckColor={state.deck.length % 2 === 0 ? 'blue' : 'red'} className="w-full h-full shadow-lg" />
+                                        </div>
+                                    ))}
+
+                                    {/* Flying Cards Animation */}
+                                    {isDealing && Array.from({ length: 44 }).map((_, i) => {
+                                        // Only render active or recently finished cards to save resources? 
+                                        // Actually react handles this okay. 
+                                        // We need to map logical player index to visual target.
+
+                                        if (i > dealingCardIndex) return null;
+
+                                        // Logical Player Index (0, 1, 2, 3)
+                                        const logicalIdx = i % 4;
+
+                                        // Map to Visual Position relative to Me
+                                        // Me = Bottom. 
+                                        let visualPos = 'TOP'; // Default
+
+                                        const myIndex = state.players.findIndex(p => p.id === peerId);
+                                        // If I am -1 (e.g. spectator/bug), default to naive map
+
+                                        if (myIndex !== -1) {
+                                            const rightIndex = (myIndex - 1 + 4) % 4;
+                                            const leftIndex = (myIndex + 1) % 4;
+
+                                            if (logicalIdx === myIndex) visualPos = 'BOTTOM';
+                                            else if (logicalIdx === rightIndex) visualPos = 'RIGHT';
+                                            else if (logicalIdx === leftIndex) visualPos = 'LEFT';
+                                            else visualPos = 'TOP';
+                                        } else {
+                                            // Fallback
+                                            const map = ['BOTTOM', 'RIGHT', 'TOP', 'LEFT'];
+                                            visualPos = map[logicalIdx];
+                                        }
+
+                                        const targets: Record<string, { x: number, y: number }> = {
+                                            'BOTTOM': { x: 0, y: 300 },
+                                            'RIGHT': { x: 400, y: 0 },
+                                            'TOP': { x: 0, y: -300 },
+                                            'LEFT': { x: -400, y: 0 }
+                                        };
+
+                                        const target = targets[visualPos];
+
+                                        return (
+                                            <motion.div
+                                                key={`deal-${i}`}
+                                                initial={{ x: 0, y: 0, scale: 1, opacity: 1 }}
+                                                animate={{
+                                                    x: target.x,
+                                                    y: target.y,
+                                                    scale: 0.67, // Shrink to match hand size (w-24 / w-36 approx 0.66)
+                                                    opacity: [1, 1, 0],
+                                                    transition: { duration: 0.5, ease: "easeInOut", times: [0, 0.9, 1] }
+                                                }}
+                                                className="absolute inset-0 z-50"
+                                            >
+                                                <Card isFaceDown deckColor={i % 2 === 0 ? 'blue' : 'red'} className="w-full h-full shadow-md" />
+                                            </motion.div>
+                                        );
+                                    })}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
 
                     {/* LEFT COLUMN: Enemy 1 (Left) */}
-                    <div className="flex items-center justify-start">
+                    <div className="flex items-center justify-center">
                         {enemyLeft && (
-                            <div className={`flex flex-row items-center gap-6 transition-all duration-300 ${enemyLeft.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
-                                {/* Vertical stack of Horizontal cards */}
-                                <div className="relative w-32 lg:w-48 flex flex-col items-center h-[28rem] overflow-visible">
+                            <div className={`flex flex-col items-center gap-2 transition-all duration-300 ${enemyLeft.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
+                                {/* Name Badge Above */}
+                                <div className="bg-black/50 px-2 py-1 rounded-lg border border-white/20 backdrop-blur-sm">
+                                    <span className={`font-bold tracking-wide text-xs ${enemyLeft.id === state.currentTurnPlayerId ? 'text-yellow-400' : 'text-white'}`}>
+                                        {enemyLeft.name.toUpperCase()}
+                                    </span>
+                                </div>
+
+                                <div className="relative w-20 flex flex-col items-center h-[16rem] overflow-visible">
                                     <div className="relative w-full h-full">
-                                        {Array.from({ length: Math.min(enemyLeft.hand.length, 8) }).map((_, i) => (
-                                            <div key={i} className="absolute left-0 w-full h-32 transition-all hover:translate-x-2" style={{ top: `${i * 45}px` }}>
+                                        {Array.from({ length: enemyLeft ? getVisibleCardCount(enemyLeft.id, enemyLeft.hand.length) : 0 }).map((_, i) => (
+                                            <div key={i} className="absolute left-0 w-full h-20 transition-all hover:translate-x-2" style={{ top: `${i * 30}px` }}>
                                                 <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-full shadow-md" />
                                             </div>
                                         ))}
                                     </div>
-                                    {/* Enhanced Badge */}
-                                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-yellow-500 text-black font-black text-xl px-3 py-1 rounded-full border-2 border-white shadow-xl z-20">
+                                    <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-yellow-500 text-black font-bold text-xs px-2 py-0.5 rounded-full border border-white shadow-lg z-20">
                                         {enemyLeft.hand.length}
                                     </div>
-                                </div>
-
-                                <div className="-rotate-90 whitespace-nowrap bg-black/50 px-3 py-2 rounded-lg border border-white/20 backdrop-blur-sm">
-                                    <span className={`font-black tracking-wide text-lg ${enemyLeft.id === state.currentTurnPlayerId ? 'text-yellow-400' : 'text-white'}`}>
-                                        {enemyLeft.name.toUpperCase()}
-                                    </span>
                                 </div>
                             </div>
                         )}
                     </div>
 
                     {/* CENTER LEFT: My/Left Team Melds */}
-                    <div className="bg-black/20 rounded-l-2xl border-r border-white/20 p-4 relative flex flex-col">
+                    <motion.div
+                        initial={{ opacity: 1 }}
+                        animate={{ opacity: isDealing ? 0 : 1 }}
+                        transition={{ duration: 0.5 }}
+                        className="bg-black/20 rounded-l-2xl border-r border-white/20 p-4 relative flex flex-col"
+                    >
                         <div className={`text-xs font-black ${leftTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2`}>
                             {leftTeamId === 'A' ? (state.teams.A.name || t.teamA) : (state.teams.B.name || t.teamB)} {t.melds} {leftTeamId === myTeamId ? `(${t.you})` : ''}
                         </div>
@@ -725,10 +882,15 @@ export function GameBoard() {
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* CENTER RIGHT: Enemy/Right Team Melds */}
-                    <div className="bg-black/20 rounded-r-2xl border-l border-white/20 p-4 relative flex flex-col pl-6">
+                    <motion.div
+                        initial={{ opacity: 1 }}
+                        animate={{ opacity: isDealing ? 0 : 1 }}
+                        transition={{ duration: 0.5 }}
+                        className="bg-black/20 rounded-r-2xl border-l border-white/20 p-4 relative flex flex-col pl-6"
+                    >
                         <div className={`text-xs font-black ${rightTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2 text-right`}>
                             {rightTeamId === 'A' ? (state.teams.A.name || t.teamA) : (state.teams.B.name || t.teamB)} {t.melds} {rightTeamId !== myTeamId ? `(${t.enemy})` : ''}
                         </div>
@@ -752,28 +914,30 @@ export function GameBoard() {
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* RIGHT COLUMN: Enemy 2 (Right) */}
-                    <div className="flex items-center justify-end">
+                    <div className="flex items-center justify-center">
                         {enemyRight && (
-                            <div className={`flex flex-row-reverse items-center gap-6 transition-all duration-300 ${enemyRight.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
-                                <div className="relative w-32 lg:w-48 flex flex-col items-center h-[28rem] overflow-visible">
+                            <div className={`flex flex-col items-center gap-2 transition-all duration-300 ${enemyRight.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
+                                {/* Name Badge Above */}
+                                <div className="bg-black/50 px-2 py-1 rounded-lg border border-white/20 backdrop-blur-sm">
+                                    <span className={`font-bold tracking-wide text-xs ${enemyRight.id === state.currentTurnPlayerId ? 'text-yellow-400' : 'text-white'}`}>
+                                        {enemyRight.name.toUpperCase()}
+                                    </span>
+                                </div>
+
+                                <div className="relative w-20 flex flex-col items-center h-[16rem] overflow-visible">
                                     <div className="relative w-full h-full">
-                                        {Array.from({ length: Math.min(enemyRight.hand.length, 8) }).map((_, i) => (
-                                            <div key={i} className="absolute right-0 w-full h-32 transition-all hover:-translate-x-2" style={{ top: `${i * 45}px` }}>
+                                        {Array.from({ length: enemyRight ? getVisibleCardCount(enemyRight.id, enemyRight.hand.length) : 0 }).map((_, i) => (
+                                            <div key={i} className="absolute right-0 w-full h-20 transition-all hover:-translate-x-2" style={{ top: `${i * 30}px` }}>
                                                 <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-full shadow-md" />
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="absolute -bottom-4 right-1/2 translate-x-1/2 bg-yellow-500 text-black font-black text-xl px-3 py-1 rounded-full border-2 border-white shadow-xl z-20">
+                                    <div className="absolute -bottom-3 right-1/2 translate-x-1/2 bg-yellow-500 text-black font-bold text-xs px-2 py-0.5 rounded-full border border-white shadow-lg z-20">
                                         {enemyRight.hand.length}
                                     </div>
-                                </div>
-                                <div className="rotate-90 whitespace-nowrap bg-black/50 px-3 py-2 rounded-lg border border-white/20 backdrop-blur-sm">
-                                    <span className={`font-black tracking-wide text-lg ${enemyRight.id === state.currentTurnPlayerId ? 'text-yellow-400' : 'text-white'}`}>
-                                        {enemyRight.name.toUpperCase()}
-                                    </span>
                                 </div>
                             </div>
                         )}
@@ -781,27 +945,31 @@ export function GameBoard() {
                 </div>
 
                 {/* --- BOTTOM ROW: Controls & Hand --- */}
-                <div className="grid grid-cols-[15%_70%_15%] pt-2">
+                <div className="grid grid-cols-[12%_76%_12%] pt-2">
 
                     {/* LEFT: Deck Only */}
-                    <div className="flex items-end justify-start pl-12 pb-16">
-                        <div className="relative group cursor-pointer hover:scale-105 transition-transform"
-                            onClick={() => {
-                                if (isMyTurn && state.turnPhase === 'WAITING_FOR_DRAW' && peerId) {
-                                    playSound(drawSound);
-                                    actions.drawCard(peerId);
-                                }
-                            }}>
-                            {/* Deck Stack Visual (Using Real Cards) */}
-                            <div className="relative w-36 h-[13.5rem]">
-                                {[0, 1, 2].map(i => (
-                                    <div key={i} className="absolute inset-0" style={{ transform: `translate(-${i * 3}px, -${i * 3}px)` }}>
-                                        <Card isFaceDown deckColor={state.deck.length % 2 === 0 ? 'blue' : 'red'} className="w-full h-full shadow-lg" />
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="absolute -top-8 w-full text-center font-bold text-blue-200 tracking-widest uppercase text-sm">{t.deck} ({state.deck.length})</div>
-                        </div>
+                    <div className="flex items-start justify-center pt-8">
+                        {!isDealing && (
+                            <motion.div
+                                layoutId="deck-container"
+                                className="relative group cursor-pointer hover:scale-105 transition-transform"
+                                onClick={() => {
+                                    if (isMyTurn && state.turnPhase === 'WAITING_FOR_DRAW' && peerId) {
+                                        playSound(drawSound);
+                                        actions.drawCard(peerId);
+                                    }
+                                }}>
+                                {/* Deck Stack Visual (Using Real Cards) */}
+                                <div className="relative w-36 h-[13.5rem]">
+                                    {[0, 1, 2].map(i => (
+                                        <div key={i} className="absolute inset-0" style={{ transform: `translate(-${i * 3}px, -${i * 3}px)` }}>
+                                            <Card isFaceDown deckColor={state.deck.length % 2 === 0 ? 'blue' : 'red'} className="w-full h-full shadow-lg" />
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="absolute -top-8 w-full text-center font-bold text-blue-200 tracking-widest uppercase text-sm">{t.deck} ({state.deck.length})</div>
+                            </motion.div>
+                        )}
                     </div>
 
                     {/* CENTER: Discard (Top) + Hand (Bottom) */}
@@ -892,9 +1060,9 @@ export function GameBoard() {
                             </AnimatePresence>
 
                             {myPlayer && (
-                                <Reorder.Group axis="x" values={handCards} onReorder={(newOrder) => { if (peerId) actions.reorderHand(peerId, newOrder); }} className="flex -space-x-12 px-8">
+                                <Reorder.Group axis="x" values={handCards.slice(0, getVisibleCardCount(myPlayer.id, handCards.length))} onReorder={(newOrder) => { if (peerId) actions.reorderHand(peerId, newOrder); }} className="flex -space-x-12 px-8">
                                     <AnimatePresence initial={false}>
-                                        {handCards.map((card) => (
+                                        {handCards.slice(0, getVisibleCardCount(myPlayer.id, handCards.length)).map((card) => (
                                             <Reorder.Item key={card.id} value={card}
                                                 // Draw Animation
                                                 initial={{ opacity: 0, scale: 0.5, x: -400, y: -30, rotate: -15, zIndex: 50 }}
@@ -943,7 +1111,7 @@ export function GameBoard() {
                     </div>
 
                     {/* RIGHT: Mour Area */}
-                    <div className="flex flex-col items-center justify-end pb-12 pr-8 opacity-90">
+                    <div className="flex flex-col items-center justify-start pt-8 opacity-90">
                         {/* Two distinct decks stacked: one vertical, one horizontal */}
                         <div className="relative w-36 h-36 flex items-center justify-center">
                             {/* Pile 1: Vertical (Only if at least 1 mour left) */}
@@ -968,8 +1136,8 @@ export function GameBoard() {
                         </div>
                     </div>
                 </div>
-            </div>
+            </div >
             {renderSettingsModal()}
-        </div>
+        </div >
     );
 }
