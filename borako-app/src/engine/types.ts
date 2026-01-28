@@ -32,6 +32,7 @@ export interface Player {
 
 export interface Team {
     id: 'A' | 'B';
+    name?: string; // Custom Team Name
     melds: Meld[];
     mourPile: Card[];
     hasTakenMour: boolean;

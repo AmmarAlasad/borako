@@ -38,11 +38,19 @@ export function useGame() {
     }, [state, peerId]);
 
     const actions = useMemo(() => ({
-        initGame: async (hostName: string) => {
+        initGame: async (hostName: string, teamNames?: { A: string, B: string }) => {
             const id = await connection.initialize();
             setPeerId(id);
             setIsConnected(true);
-            dispatch({ type: 'INIT_GAME', payload: { hostName, playerId: id } });
+            dispatch({
+                type: 'INIT_GAME',
+                payload: {
+                    hostName,
+                    playerId: id,
+                    teamAName: teamNames?.A,
+                    teamBName: teamNames?.B
+                }
+            });
         },
         retryConnection: async () => {
             // Force re-init (attempt to get online ID)
@@ -73,6 +81,9 @@ export function useGame() {
         },
         kickPlayer: (playerId: string) => {
             handleAction({ type: 'KICK_PLAYER', payload: { playerId } });
+        },
+        switchTeam: (playerId: string) => {
+            handleAction({ type: 'SWITCH_TEAM', payload: { playerId } });
         },
         startGame: () => {
             if (isHost()) dispatch({ type: 'START_GAME' });

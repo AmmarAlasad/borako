@@ -11,6 +11,8 @@ export function GameBoard() {
     const [selectedMeldId, setSelectedMeldId] = useState<string | null>(null);
 
     const [playerName, setPlayerName] = useState('');
+    const [teamAName, setTeamAName] = useState('Team A'); // New State
+    const [teamBName, setTeamBName] = useState('Team B'); // New State
     const [joinHostId, setJoinHostId] = useState('');
     const [view, setView] = useState<'WELCOME' | 'JOIN'>('WELCOME');
     const [isLoading, setIsLoading] = useState(false);
@@ -25,7 +27,7 @@ export function GameBoard() {
     const handleHost = async () => {
         setIsLoading(true);
         try {
-            await actions.initGame(playerName);
+            await actions.initGame(playerName, { A: teamAName, B: teamBName });
         } catch (e) {
             console.error(e);
             setIsLoading(false);
@@ -57,11 +59,11 @@ export function GameBoard() {
                     </h1>
                     <div className="flex justify-center gap-12 text-2xl font-mono mb-8">
                         <div className="flex flex-col items-center">
-                            <span className="text-blue-400 font-bold">Team A</span>
+                            <span className="text-blue-400 font-bold">{state.teams.A.name || 'Team A'}</span>
                             <span className="text-4xl">{teamAScore}</span>
                         </div>
                         <div className="flex flex-col items-center">
-                            <span className="text-red-400 font-bold">Team B</span>
+                            <span className="text-red-400 font-bold">{state.teams.B.name || 'Team B'}</span>
                             <span className="text-4xl">{teamBScore}</span>
                         </div>
                     </div>
@@ -95,7 +97,7 @@ export function GameBoard() {
                     <div className="grid grid-cols-2 gap-8 mb-8">
                         {/* Team A Stats */}
                         <div className="bg-slate-800/50 p-6 rounded-xl border border-blue-500/20">
-                            <h3 className="text-xl font-bold text-blue-400 mb-4 border-b border-blue-500/20 pb-2">TEAM A</h3>
+                            <h3 className="text-xl font-bold text-blue-400 mb-4 border-b border-blue-500/20 pb-2">{state.teams.A.name || 'TEAM A'}</h3>
                             <div className="flex justify-between items-end mb-2">
                                 <span className="text-slate-400">Round Score</span>
                                 <span className="text-2xl font-mono font-bold text-white">+{teamA.roundScore}</span>
@@ -109,7 +111,7 @@ export function GameBoard() {
 
                         {/* Team B Stats */}
                         <div className="bg-slate-800/50 p-6 rounded-xl border border-red-500/20">
-                            <h3 className="text-xl font-bold text-red-400 mb-4 border-b border-red-500/20 pb-2">TEAM B</h3>
+                            <h3 className="text-xl font-bold text-red-400 mb-4 border-b border-red-500/20 pb-2">{state.teams.B.name || 'TEAM B'}</h3>
                             <div className="flex justify-between items-end mb-2">
                                 <span className="text-slate-400">Round Score</span>
                                 <span className="text-2xl font-mono font-bold text-white">+{teamB.roundScore}</span>
@@ -162,6 +164,31 @@ export function GameBoard() {
                             />
                         </div>
 
+
+
+                        {view === 'WELCOME' && (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs uppercase text-slate-500 font-bold mb-1">Team A Name</label>
+                                    <input
+                                        className="w-full bg-slate-800 border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                        placeholder="Team A"
+                                        value={teamAName}
+                                        onChange={e => setTeamAName(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs uppercase text-slate-500 font-bold mb-1">Team B Name</label>
+                                    <input
+                                        className="w-full bg-slate-800 border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                                        placeholder="Team B"
+                                        value={teamBName}
+                                        onChange={e => setTeamBName(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
                         {view === 'WELCOME' ? (
                             <div className="flex flex-col gap-3 pt-2">
                                 <button
@@ -213,7 +240,7 @@ export function GameBoard() {
                     </div>
                 </div>
                 <div className="text-xs text-slate-600 absolute bottom-4">v1.0.0 • PeerJS Powered</div>
-            </div>
+            </div >
         );
     }
 
@@ -270,7 +297,21 @@ export function GameBoard() {
                                                 {player.name[0]?.toUpperCase()}
                                             </div>
                                             <div className="font-bold text-lg">{player.name}</div>
-                                            <div className="text-xs text-green-400">{player.isHost ? 'HOST' : 'READY'}</div>
+                                            <div className="flex gap-2 items-center mt-1">
+                                                <div className={`px-2 py-0.5 rounded textxs font-bold ${player.teamId === 'A' ? 'bg-blue-500/20 text-blue-300' : 'bg-red-500/20 text-red-300'}`}>
+                                                    {state.teams[player.teamId]?.name || `Team ${player.teamId}`}
+                                                </div>
+                                                {isHost && (
+                                                    <button
+                                                        onClick={() => actions.switchTeam(player.id)}
+                                                        className="text-xs bg-white/10 hover:bg-white/20 p-1 rounded"
+                                                        title="Switch Team"
+                                                    >
+                                                        ⇄
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="text-xs text-green-400 mt-1">{player.isHost ? 'HOST' : 'READY'}</div>
                                         </>
                                     ) : (
                                         <div className="text-slate-600">Empty Slot</div>
@@ -430,13 +471,13 @@ export function GameBoard() {
                     <div className="absolute top-0 right-0 bg-black/60 px-6 py-3 rounded-xl border border-white/20 backdrop-blur-md shadow-xl">
                         <div className="flex gap-8 text-base font-black tracking-wider">
                             <div className="text-blue-400 flex flex-col items-center leading-none">
-                                <span>TEAM A</span>
+                                <span>{state.teams.A.name || 'TEAM A'}</span>
                                 <span className="text-2xl text-white">{state.teams.A.totalScore}</span>
                                 <span className="text-[10px] text-white/50">+{state.teams.A.roundScore}</span>
                             </div>
                             <div className="w-px bg-white/20"></div>
                             <div className="text-red-400 flex flex-col items-center leading-none">
-                                <span>TEAM B</span>
+                                <span>{state.teams.B.name || 'TEAM B'}</span>
                                 <span className="text-2xl text-white">{state.teams.B.totalScore}</span>
                                 <span className="text-[10px] text-white/50">+{state.teams.B.roundScore}</span>
                             </div>
@@ -478,7 +519,7 @@ export function GameBoard() {
                     {/* CENTER LEFT: My/Left Team Melds */}
                     <div className="bg-black/20 rounded-l-2xl border-r border-white/20 p-4 relative flex flex-col">
                         <div className={`text-xs font-black ${leftTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2`}>
-                            Team {leftTeamId} Melds {leftTeamId === myTeamId ? '(YOU)' : ''}
+                            {leftTeamId === 'A' ? (state.teams.A.name || 'Team A') : (state.teams.B.name || 'Team B')} Melds {leftTeamId === myTeamId ? '(YOU)' : ''}
                         </div>
                         <div className="flex-1 flex flex-wrap content-start gap-2 overflow-visible">
                             {(leftTeam?.melds || []).map(meld => (
@@ -505,7 +546,7 @@ export function GameBoard() {
                     {/* CENTER RIGHT: Enemy/Right Team Melds */}
                     <div className="bg-black/20 rounded-r-2xl border-l border-white/20 p-4 relative flex flex-col pl-6">
                         <div className={`text-xs font-black ${rightTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2 text-right`}>
-                            Team {rightTeamId} Melds {rightTeamId !== myTeamId ? '(ENEMY)' : ''}
+                            {rightTeamId === 'A' ? (state.teams.A.name || 'Team A') : (state.teams.B.name || 'Team B')} Melds {rightTeamId !== myTeamId ? '(ENEMY)' : ''}
                         </div>
                         <div className="flex-1 flex flex-wrap content-start gap-2 justify-end overflow-visible">
                             {(rightTeam?.melds || []).map(meld => (

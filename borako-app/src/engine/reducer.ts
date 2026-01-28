@@ -6,7 +6,7 @@ import { calculateTeamRoundScore } from './scoring';
 import { v4 as uuidv4 } from 'uuid';
 
 export type GameAction =
-    | { type: 'INIT_GAME'; payload: { hostName: string; playerId: string } }
+    | { type: 'INIT_GAME'; payload: { hostName: string; playerId: string; teamAName?: string; teamBName?: string } }
     | { type: 'JOIN_GAME'; payload: { playerId: string; name: string } }
     | { type: 'START_GAME' }
     | { type: 'DRAW_CARD'; payload: { playerId: string } }
@@ -16,6 +16,7 @@ export type GameAction =
     | { type: 'DISCARD_CARD'; payload: { playerId: string; cardId: string } }
     | { type: 'REORDER_HAND'; payload: { playerId: string; newOrder: Card[] } }
     | { type: 'KICK_PLAYER'; payload: { playerId: string } }
+    | { type: 'SWITCH_TEAM'; payload: { playerId: string } }
     | { type: 'NEXT_ROUND' }
     | { type: 'RESET_GAME' }
     | { type: 'SYNC_STATE'; payload: GameState };
@@ -70,7 +71,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                     hand: [],
                     teamId: 'A', // Host is Team A
                     isHost: true
-                }]
+                }],
+                teams: {
+                    A: { ...INITIAL_STATE.teams.A, name: action.payload.teamAName || 'Team A' },
+                    B: { ...INITIAL_STATE.teams.B, name: action.payload.teamBName || 'Team B' }
+                }
             };
         }
 
@@ -100,15 +105,29 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             // Filter out the kicked player
             const newPlayers = state.players.filter(p => p.id !== action.payload.playerId);
 
-            // Reassign teams to ensure ABAB balance
-            const balancedPlayers = newPlayers.map((p, index) => ({
-                ...p,
-                teamId: (index % 2 === 0 ? 'A' : 'B') as 'A' | 'B'
-            }));
+            // Reassign teams to ensure ABAB balance - NO, let's keep manual teams now?
+            // Actually user wants manual, so maybe we SHOULD NOT auto-balance on kick anymore?
+            // Or maybe keep auto-balance for new joins but manual overrides?
+            // For now, let's just remove the player. Auto-balance happens on Join.
 
             return {
                 ...state,
-                players: balancedPlayers
+                players: newPlayers
+            };
+        }
+
+        case 'SWITCH_TEAM': {
+            if (state.phase !== 'LOBBY') return state;
+            const player = state.players.find(p => p.id === action.payload.playerId);
+            if (!player) return state;
+
+            return {
+                ...state,
+                players: state.players.map(p =>
+                    p.id === player.id
+                        ? { ...p, teamId: p.teamId === 'A' ? 'B' : 'A' }
+                        : p
+                )
             };
         }
 
