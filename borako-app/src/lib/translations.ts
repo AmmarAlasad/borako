@@ -78,6 +78,9 @@ export const translations = {
         // Settings
         settings: "Settings",
         language: "Language",
+        sounds: "Sound Effects",
+        on: "On",
+        off: "Off",
         close: "Close",
     },
     ar: {
@@ -154,8 +157,11 @@ export const translations = {
         joining: "جاري الانضمام...",
 
         // Settings
-        settings: "الإعدادات",
-        language: "اللغة",
+        settings: "Settings",
+        language: "Language",
+        sounds: "المؤثرات الصوتية",
+        on: "تشغيل",
+        off: "إيقاف",
         close: "إغلاق",
     }
 };

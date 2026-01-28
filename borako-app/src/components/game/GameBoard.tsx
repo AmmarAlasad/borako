@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { Card } from './Card';
 import { AnimatePresence, Reorder } from 'framer-motion';
@@ -13,8 +13,18 @@ export function GameBoard() {
     const [lang, setLang] = useState<Language>('en'); // Language State
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [showSettings, setShowSettings] = useState(false);
+    const [soundEnabled, setSoundEnabled] = useState(true);
 
     // Audio Refs
+    const drawSound = useRef(new Audio('/sounds/card-draw.wav'));
+    const discardSound = useRef(new Audio('/sounds/discard.wav'));
+
+    const playSound = (audioRef: React.RefObject<HTMLAudioElement>) => {
+        if (soundEnabled && audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch(e => console.log("Audio play blocked", e));
+        }
+    };
     // --- HELPER: Settings Modal ---
     const renderSettingsModal = () => {
         if (!showSettings) return null;
@@ -44,6 +54,24 @@ export function GameBoard() {
                                     className={`flex-1 py-3 rounded-xl font-bold transition-all border-2 ${lang === 'ar' ? 'bg-yellow-500/10 border-yellow-500 text-yellow-400' : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-700'}`}
                                 >
                                     العربية 🇸🇦
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs uppercase text-slate-500 font-bold mb-3">{t.sounds}</label>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setSoundEnabled(true)}
+                                    className={`flex-1 py-3 rounded-xl font-bold transition-all border-2 ${soundEnabled ? 'bg-green-500/10 border-green-500 text-green-400' : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-700'}`}
+                                >
+                                    {t.on}
+                                </button>
+                                <button
+                                    onClick={() => setSoundEnabled(false)}
+                                    className={`flex-1 py-3 rounded-xl font-bold transition-all border-2 ${!soundEnabled ? 'bg-red-500/10 border-red-500 text-red-400' : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-700'}`}
+                                >
+                                    {t.off}
                                 </button>
                             </div>
                         </div>
@@ -486,6 +514,7 @@ export function GameBoard() {
             return;
         }
         if (peerId && selectedCards.length === 1) {
+            playSound(discardSound);
             actions.discardCard(peerId, selectedCards[0]);
             setSelectedCards([]);
         }
@@ -687,10 +716,10 @@ export function GameBoard() {
                     <div className="flex items-end justify-start pl-12 pb-16">
                         <div className="relative group cursor-pointer hover:scale-105 transition-transform"
                             onClick={() => {
-                                if (!isMyTurn || state.turnPhase !== 'WAITING_FOR_DRAW') { // Only allow if correct phase
-                                    // Optional: Feedback here too?
+                                if (isMyTurn && state.turnPhase === 'WAITING_FOR_DRAW' && peerId) {
+                                    playSound(drawSound);
+                                    actions.drawCard(peerId);
                                 }
-                                if (isMyTurn && state.turnPhase === 'WAITING_FOR_DRAW' && peerId) actions.drawCard(peerId);
                             }}>
                             {/* Deck Stack Visual (Using Real Cards) */}
                             <div className="relative w-36 h-[13.5rem]">
@@ -709,7 +738,12 @@ export function GameBoard() {
 
                         {/* 1. DISCARD AREA (Spread Above Hand) */}
                         <div className="mb-4 w-full flex justify-center items-end"
-                            onClick={() => isMyTurn && state.turnPhase === 'WAITING_FOR_DRAW' && peerId && actions.sweepPile(peerId)}>
+                            onClick={() => {
+                                if (isMyTurn && state.turnPhase === 'WAITING_FOR_DRAW' && peerId && state.discardPile.length > 0) {
+                                    playSound(drawSound);
+                                    actions.sweepPile(peerId);
+                                }
+                            }}>
                             {state.discardPile.length > 0 ? (
                                 <div className="relative h-[7.2rem] flex items-center cursor-pointer group hover:scale-105 transition-transform bg-slate-300/20 px-[4rem] py-2 rounded-2xl border border-white/20 backdrop-blur-sm shadow-xl">
                                     {/* Fan the last 8 cards horizontally */}
@@ -760,6 +794,22 @@ export function GameBoard() {
                                     <AnimatePresence initial={false}>
                                         {handCards.map((card) => (
                                             <Reorder.Item key={card.id} value={card}
+                                                // Draw Animation
+                                                initial={{ opacity: 0, scale: 0.5, x: -400, y: -30, rotate: -15, zIndex: 50 }}
+                                                animate={{
+                                                    opacity: 1,
+                                                    scale: 1,
+                                                    x: 0,
+                                                    y: 0,
+                                                    rotate: 0,
+                                                    zIndex: 50,
+                                                    transition: { type: "spring", stiffness: 350, damping: 25 }
+                                                }}
+                                                // Reset zIndex after animation so stacking works normally
+                                                onAnimationComplete={() => {
+                                                    // We can't easily reset zIndex via declarative animation without transitionEnd
+                                                    // But transitionEnd is clean:
+                                                }}
                                                 whileDrag={{ scale: 1.1, zIndex: 100, boxShadow: "0px 10px 20px rgba(0,0,0,0.5)" }}
                                                 onDragEnd={(_event, info) => {
                                                     // Detection Logic
@@ -773,7 +823,7 @@ export function GameBoard() {
                                                         }
                                                     }
                                                 }}
-                                                className="relative transition-transform duration-200">
+                                                className="relative"> {/* Removed transition-transform to avoid conflict with Motion */}
                                                 <div className="hover:-translate-y-10 transition-transform duration-200 origin-bottom hover:z-20 relative">
                                                     <Card card={card}
                                                         isSelected={selectedCards.includes(card.id)}
