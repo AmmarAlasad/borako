@@ -265,7 +265,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
             const teamId = player.teamId;
 
-            return {
+            let nextState = {
                 ...state,
                 players: state.players.map(p => p.id === player.id ? { ...p, hand: newHand } : p),
                 teams: {
@@ -275,10 +275,27 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                         melds: [...state.teams[teamId].melds, newMeld]
                     }
                 },
-                mustMeldAfterSweep: false, // Sweep requirement fulfilled
-                sweptCards: [], // Clear swept cards
+                mustMeldAfterSweep: false,
+                sweptCards: [],
                 logs: [...state.logs, `Player melded ${cards.length} cards`]
             };
+
+            // MOUR CHECK
+            const team = nextState.teams[teamId];
+            if (newHand.length === 0 && !team.hasTakenMour) {
+                const mour = team.mourPile;
+                nextState = {
+                    ...nextState,
+                    teams: {
+                        ...nextState.teams,
+                        [teamId]: { ...team, mourPile: [], hasTakenMour: true }
+                    },
+                    players: nextState.players.map(p => p.id === player.id ? { ...p, hand: sortHand(mour) } : p),
+                    logs: [...nextState.logs, "Player took the Mour!"]
+                };
+            }
+
+            return nextState;
         }
 
         case 'ADD_TO_MELD': {
@@ -345,7 +362,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             // Ideally `validateMeld` should return sorted cards.
             // For now, let's just append and let UI/User handle or do lazy sort.
 
-            return {
+            let nextState = {
                 ...state,
                 players: state.players.map(p => p.id === player.id ? { ...p, hand: newHand } : p),
                 teams: {
@@ -355,10 +372,27 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                         melds: state.teams[teamId].melds.map(m => m.id === meldId ? updatedMeld : m)
                     }
                 },
-                mustMeldAfterSweep: false, // Sweep requirement fulfilled
-                sweptCards: [], // Clear swept cards
+                mustMeldAfterSweep: false,
+                sweptCards: [],
                 logs: [...state.logs, `Added to meld`]
             };
+
+            // MOUR CHECK
+            const team2 = nextState.teams[teamId];
+            if (newHand.length === 0 && !team2.hasTakenMour) {
+                const mour = team2.mourPile;
+                nextState = {
+                    ...nextState,
+                    teams: {
+                        ...nextState.teams,
+                        [teamId]: { ...team2, mourPile: [], hasTakenMour: true }
+                    },
+                    players: nextState.players.map(p => p.id === player.id ? { ...p, hand: sortHand(mour) } : p),
+                    logs: [...nextState.logs, "Player took the Mour!"]
+                };
+            }
+
+            return nextState;
         }
 
         case 'DISCARD_CARD': {
