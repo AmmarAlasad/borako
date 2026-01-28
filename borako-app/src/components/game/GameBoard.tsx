@@ -3,12 +3,66 @@ import { useGame } from '../../hooks/useGame';
 import { Card } from './Card';
 import { AnimatePresence, Reorder } from 'framer-motion';
 import { calculateMeldBonus } from '../../engine/scoring';
+import { translations, type Language } from '../../lib/translations';
 
 export function GameBoard() {
     const { state, actions, peerId } = useGame();
     const isHost = state.players.find(p => p.id === peerId)?.isHost;
     const [selectedCards, setSelectedCards] = useState<string[]>([]);
     const [selectedMeldId, setSelectedMeldId] = useState<string | null>(null);
+    const [lang, setLang] = useState<Language>('en'); // Language State
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [showSettings, setShowSettings] = useState(false);
+
+    // Audio Refs
+    // --- HELPER: Settings Modal ---
+    const renderSettingsModal = () => {
+        if (!showSettings) return null;
+        return (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                <div className="bg-slate-900 border border-white/10 p-6 rounded-2xl shadow-2xl w-full max-w-sm relative">
+                    <button
+                        onClick={() => setShowSettings(false)}
+                        className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+                    >
+                        ✕
+                    </button>
+                    <h2 className="text-2xl font-bold text-white mb-6 text-center">{t.settings}</h2>
+
+                    <div className="space-y-6">
+                        <div>
+                            <label className="block text-xs uppercase text-slate-500 font-bold mb-3">{t.language}</label>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setLang('en')}
+                                    className={`flex-1 py-3 rounded-xl font-bold transition-all border-2 ${lang === 'en' ? 'bg-yellow-500/10 border-yellow-500 text-yellow-400' : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-700'}`}
+                                >
+                                    English 🇺🇸
+                                </button>
+                                <button
+                                    onClick={() => setLang('ar')}
+                                    className={`flex-1 py-3 rounded-xl font-bold transition-all border-2 ${lang === 'ar' ? 'bg-yellow-500/10 border-yellow-500 text-yellow-400' : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-700'}`}
+                                >
+                                    العربية 🇸🇦
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mt-8">
+                        <button
+                            onClick={() => setShowSettings(false)}
+                            className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl transition-all"
+                        >
+                            {t.close}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const t = translations[lang]; // Translation Helper
 
     const [playerName, setPlayerName] = useState('');
     const [teamAName, setTeamAName] = useState('Team A'); // New State
@@ -18,7 +72,6 @@ export function GameBoard() {
     const [isLoading, setIsLoading] = useState(false);
 
     // Feedback Toast State (Hoisted to top)
-    const [toastMessage, setToastMessage] = useState<string | null>(null);
     const showToast = (msg: string) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(null), 3000);
@@ -143,6 +196,7 @@ export function GameBoard() {
         );
     }
 
+    // --- RENDER ---
     // 3. Welcome Screen (No Players)
     if (state.phase === 'LOBBY' && state.players.length === 0) {
         return (
@@ -150,15 +204,25 @@ export function GameBoard() {
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-green-900/40 via-slate-950 to-slate-950" />
 
                 <div className="z-10 bg-slate-900/80 p-8 rounded-2xl shadow-2xl border border-white/10 backdrop-blur-md max-w-md w-full">
-                    <h1 className="text-5xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent mb-2 text-center">Borako</h1>
-                    <p className="text-blue-200 text-center mb-8">The Ultimate P2P Card Game</p>
+                    <h1 className="text-5xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent mb-2 text-center">{t.borako}</h1>
+                    <p className="text-blue-200 text-center mb-8">{t.subtitle}</p>
+
+                    <div className="absolute top-4 right-4 z-50">
+                        <button
+                            onClick={() => setShowSettings(true)}
+                            className="p-3 bg-white/5 hover:bg-white/10 rounded-full text-white/70 hover:text-white transition-all backdrop-blur-sm"
+                            title={t.settings}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+                        </button>
+                    </div>
 
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-xs uppercase text-slate-500 font-bold mb-1">Your Name</label>
+                            <label className="block text-xs uppercase text-slate-500 font-bold mb-1">{t.yourNameLabel}</label>
                             <input
                                 className="w-full bg-slate-800 border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-yellow-500 outline-none transition-all"
-                                placeholder="Enter your name..."
+                                placeholder={t.yourNamePlaceholder}
                                 value={playerName}
                                 onChange={e => setPlayerName(e.target.value)}
                             />
@@ -169,19 +233,19 @@ export function GameBoard() {
                         {view === 'WELCOME' && (
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs uppercase text-slate-500 font-bold mb-1">Team A Name</label>
+                                    <label className="block text-xs uppercase text-slate-500 font-bold mb-1">{t.teamANameLabel}</label>
                                     <input
                                         className="w-full bg-slate-800 border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                        placeholder="Team A"
+                                        placeholder={t.teamA}
                                         value={teamAName}
                                         onChange={e => setTeamAName(e.target.value)}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs uppercase text-slate-500 font-bold mb-1">Team B Name</label>
+                                    <label className="block text-xs uppercase text-slate-500 font-bold mb-1">{t.teamBNameLabel}</label>
                                     <input
                                         className="w-full bg-slate-800 border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
-                                        placeholder="Team B"
+                                        placeholder={t.teamB}
                                         value={teamBName}
                                         onChange={e => setTeamBName(e.target.value)}
                                     />
@@ -199,22 +263,22 @@ export function GameBoard() {
                                     {isLoading ? (
                                         <span className="animate-spin mr-2">⟳</span>
                                     ) : null}
-                                    {isLoading ? 'Creating Lobby...' : 'Host New Game'}
+                                    {isLoading ? t.loading : t.hostGame}
                                 </button>
                                 <button
                                     onClick={() => setView('JOIN')}
                                     className="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 rounded-lg border border-slate-700 transition-all"
                                 >
-                                    Join Existing Game
+                                    {t.joinGame}
                                 </button>
                             </div>
                         ) : (
                             <div className="space-y-4 pt-2">
                                 <div>
-                                    <label className="block text-xs uppercase text-slate-500 font-bold mb-1">Host ID</label>
+                                    <label className="block text-xs uppercase text-slate-500 font-bold mb-1">{t.hostIdLabel}</label>
                                     <input
                                         className="w-full bg-slate-800 border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all font-mono"
-                                        placeholder="Paste Host ID here..."
+                                        placeholder={t.hostIdPlaceholder}
                                         value={joinHostId}
                                         onChange={e => setJoinHostId(e.target.value)}
                                     />
@@ -224,7 +288,7 @@ export function GameBoard() {
                                         onClick={() => setView('WELCOME')}
                                         className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-lg transition-all"
                                     >
-                                        Back
+                                        {t.back}
                                     </button>
                                     <button
                                         disabled={!playerName.trim() || !joinHostId.trim() || isLoading}
@@ -232,7 +296,7 @@ export function GameBoard() {
                                         onClick={handleJoin}
                                     >
                                         {isLoading ? <span className="animate-spin mr-2">⟳</span> : null}
-                                        {isLoading ? 'Joining...' : 'Join'}
+                                        {isLoading ? t.joining : t.join}
                                     </button>
                                 </div>
                             </div>
@@ -240,6 +304,7 @@ export function GameBoard() {
                     </div>
                 </div>
                 <div className="text-xs text-slate-600 absolute bottom-4">v1.0.0 • PeerJS Powered</div>
+                {renderSettingsModal()}
             </div >
         );
     }
@@ -248,14 +313,23 @@ export function GameBoard() {
     if (state.phase === 'LOBBY') {
         return (
             <div className="flex flex-col items-center justify-center h-screen bg-slate-900 text-white relative">
+                <div className="absolute top-4 left-4 z-50">
+                    <button
+                        onClick={() => setShowSettings(true)}
+                        className="p-3 bg-white/5 hover:bg-white/10 rounded-full text-white/70 hover:text-white transition-all backdrop-blur-sm"
+                        title={t.settings}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+                    </button>
+                </div>
                 <div className="w-full max-w-4xl p-8">
                     <div className="flex justify-between items-center mb-8">
                         <div>
-                            <h1 className="text-4xl font-bold text-white">Lobby</h1>
-                            <p className="text-slate-400">Waiting for players to join...</p>
+                            <h1 className="text-4xl font-bold text-white">{t.lobby}</h1>
+                            <p className="text-slate-400">{t.waiting}</p>
                         </div>
                         <div className="text-right">
-                            <p className="text-xs uppercase text-slate-500 font-bold">Room Code (Click to Copy)</p>
+                            <p className="text-xs uppercase text-slate-500 font-bold">{t.roomCode}</p>
                             <button
                                 className="text-xl font-mono text-yellow-400 hover:text-yellow-300 bg-black/30 px-3 py-1 rounded cursor-pointer transition-colors"
                                 onClick={() => {
@@ -342,6 +416,7 @@ export function GameBoard() {
                         </button>
                     </div>
                 </div>
+                {renderSettingsModal()}
             </div>
         );
     }
@@ -387,7 +462,7 @@ export function GameBoard() {
     // Action Wrappers with Feedback
     const handleMeld = () => {
         if (state.turnPhase === 'WAITING_FOR_DRAW') {
-            showToast("Draw a card first!");
+            showToast(t.drawFirst);
             return;
         }
         if (peerId) actions.meldCards(peerId, handCards.filter(c => selectedCards.includes(c.id)));
@@ -396,7 +471,7 @@ export function GameBoard() {
 
     const handleAddToMeld = () => {
         if (state.turnPhase === 'WAITING_FOR_DRAW') {
-            showToast("Draw a card first!");
+            showToast(t.drawFirst);
             return;
         }
         if (!peerId || !selectedMeldId) return;
@@ -420,6 +495,15 @@ export function GameBoard() {
 
     return (
         <div className="flex flex-col h-screen w-screen bg-[#35654d] text-white overflow-hidden relative font-sans select-none">
+            <div className="absolute top-4 left-4 z-[60]">
+                <button
+                    onClick={() => setShowSettings(true)}
+                    className="p-2 bg-black/20 hover:bg-black/40 rounded-full text-white/50 hover:text-white transition-all backdrop-blur-sm"
+                    title={t.settings}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+                </button>
+            </div>
             {/* Background Texture Overlay */}
             <div className="absolute inset-0 pointer-events-none opacity-30 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] mix-blend-overlay z-0"></div>
 
@@ -464,20 +548,20 @@ export function GameBoard() {
                             </div>
                         </div>
                     ) : (
-                        <div className="opacity-30 text-sm font-bold uppercase tracking-widest">No Teammate</div>
+                        <div className="opacity-30 text-sm font-bold uppercase tracking-widest">{t.noTeammate}</div>
                     )}
 
                     {/* Score Board (Top Center Overlay) */}
                     <div className="absolute top-0 right-0 bg-black/60 px-6 py-3 rounded-xl border border-white/20 backdrop-blur-md shadow-xl">
                         <div className="flex gap-8 text-base font-black tracking-wider">
                             <div className="text-blue-400 flex flex-col items-center leading-none">
-                                <span>{state.teams.A.name || 'TEAM A'}</span>
+                                <span>{state.teams.A.name || t.teamA}</span>
                                 <span className="text-2xl text-white">{state.teams.A.totalScore}</span>
                                 <span className="text-[10px] text-white/50">+{state.teams.A.roundScore}</span>
                             </div>
                             <div className="w-px bg-white/20"></div>
                             <div className="text-red-400 flex flex-col items-center leading-none">
-                                <span>{state.teams.B.name || 'TEAM B'}</span>
+                                <span>{state.teams.B.name || t.teamB}</span>
                                 <span className="text-2xl text-white">{state.teams.B.totalScore}</span>
                                 <span className="text-[10px] text-white/50">+{state.teams.B.roundScore}</span>
                             </div>
@@ -519,7 +603,7 @@ export function GameBoard() {
                     {/* CENTER LEFT: My/Left Team Melds */}
                     <div className="bg-black/20 rounded-l-2xl border-r border-white/20 p-4 relative flex flex-col">
                         <div className={`text-xs font-black ${leftTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2`}>
-                            {leftTeamId === 'A' ? (state.teams.A.name || 'Team A') : (state.teams.B.name || 'Team B')} Melds {leftTeamId === myTeamId ? '(YOU)' : ''}
+                            {leftTeamId === 'A' ? (state.teams.A.name || t.teamA) : (state.teams.B.name || t.teamB)} {t.melds} {leftTeamId === myTeamId ? `(${t.you})` : ''}
                         </div>
                         <div className="flex-1 flex flex-wrap content-start gap-2 overflow-visible">
                             {(leftTeam?.melds || []).map(meld => (
@@ -546,7 +630,7 @@ export function GameBoard() {
                     {/* CENTER RIGHT: Enemy/Right Team Melds */}
                     <div className="bg-black/20 rounded-r-2xl border-l border-white/20 p-4 relative flex flex-col pl-6">
                         <div className={`text-xs font-black ${rightTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2 text-right`}>
-                            {rightTeamId === 'A' ? (state.teams.A.name || 'Team A') : (state.teams.B.name || 'Team B')} Melds {rightTeamId !== myTeamId ? '(ENEMY)' : ''}
+                            {rightTeamId === 'A' ? (state.teams.A.name || t.teamA) : (state.teams.B.name || t.teamB)} {t.melds} {rightTeamId !== myTeamId ? `(${t.enemy})` : ''}
                         </div>
                         <div className="flex-1 flex flex-wrap content-start gap-2 justify-end overflow-visible">
                             {(rightTeam?.melds || []).map(meld => (
@@ -616,7 +700,7 @@ export function GameBoard() {
                                     </div>
                                 ))}
                             </div>
-                            <div className="absolute -top-8 w-full text-center font-bold text-blue-200 tracking-widest uppercase text-sm">Deck ({state.deck.length})</div>
+                            <div className="absolute -top-8 w-full text-center font-bold text-blue-200 tracking-widest uppercase text-sm">{t.deck} ({state.deck.length})</div>
                         </div>
                     </div>
 
@@ -636,13 +720,13 @@ export function GameBoard() {
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="ml-8 bg-black/60 px-3 py-1 rounded-full text-xs font-bold text-yellow-500 border border-yellow-500/30 opacity-80 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                    <div className="ml-4 bg-black/60 px-3 py-1 rounded-full text-xs font-bold text-yellow-500 border border-yellow-500/30 opacity-60 group-hover:opacity-100 transition-opacity">
                                         DISCARD PILE ({state.discardPile.length})
                                     </div>
                                 </div>
                             ) : (
-                                <div className="w-[15.6rem] h-[7.2rem] bg-slate-300/10 border-2 border-dashed border-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                                    <span className="text-white/40 font-bold tracking-widest text-xs uppercase">Discard Empty</span>
+                                <div className="w-32 h-20 border-2 border-dashed border-white/10 rounded-lg flex items-center justify-center">
+                                    <span className="text-white/20 font-bold tracking-widest text-xs uppercase">Discard Empty</span>
                                 </div>
                             )}
                         </div>
@@ -655,19 +739,19 @@ export function GameBoard() {
                                     disabled={!isMyTurn}
                                     onClick={handleMeld}
                                     className="px-6 py-2 bg-gradient-to-t from-yellow-700 to-yellow-500 text-white font-black rounded-lg shadow-[0_0_15px_rgba(234,179,8,0.5)] border-2 border-yellow-300 hover:scale-105 active:scale-95 uppercase tracking-wider text-sm">
-                                    Meld
+                                    {t.meldBtn}
                                 </button>
                                 <button
                                     disabled={!isMyTurn || !selectedMeldId}
                                     onClick={handleAddToMeld}
                                     className="px-6 py-2 bg-gradient-to-t from-blue-700 to-blue-500 text-white font-black rounded-lg shadow-[0_0_15px_rgba(59,130,246,0.5)] border-2 border-blue-300 hover:scale-105 active:scale-95 uppercase tracking-wider text-sm">
-                                    Add to Meld
+                                    {t.addToMeld}
                                 </button>
                                 <button
                                     disabled={!isMyTurn || selectedCards.length !== 1}
                                     onClick={handleDiscard}
                                     className="px-6 py-2 bg-gradient-to-t from-red-700 to-red-500 text-white font-black rounded-lg shadow-[0_0_15px_rgba(239,68,68,0.5)] border-2 border-red-300 hover:scale-105 active:scale-95 uppercase tracking-wider text-sm">
-                                    Discard
+                                    {t.discard}
                                 </button>
                             </div>
 
@@ -743,6 +827,7 @@ export function GameBoard() {
                 </div>
 
             </div>
+            {renderSettingsModal()}
         </div>
     );
 }
