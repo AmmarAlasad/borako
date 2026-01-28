@@ -858,7 +858,7 @@ export function GameBoard() {
                                                     y: 0,
                                                     rotate: 0,
                                                     zIndex: 50,
-                                                    transition: { type: "spring", stiffness: 350, damping: 25 }
+                                                    transition: { type: "spring", stiffness: 90, damping: 22 }
                                                 }}
                                                 // Reset zIndex after animation so stacking works normally
                                                 onAnimationComplete={() => {
