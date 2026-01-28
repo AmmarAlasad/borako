@@ -71,6 +71,7 @@ export interface GameState {
     // First Turn Special Rule
     isFirstTurn: boolean;
     firstTurnDrawCount: number;
+    lastDrawnCardId?: string;
 
     // Messages/Logs
     logs: string[];

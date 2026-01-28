@@ -195,6 +195,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 players,
                 turnPhase: 'PLAYING',
                 firstTurnDrawCount: state.isFirstTurn ? state.firstTurnDrawCount + 1 : state.firstTurnDrawCount,
+                lastDrawnCardId: card.id,
                 logs: [...state.logs, "Player drew a card"]
             };
         }
@@ -401,6 +402,16 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         case 'DISCARD_CARD': {
             if (state.currentTurnPlayerId !== action.payload.playerId) return state;
             if (state.turnPhase !== 'PLAYING') return state; // Must be in playing phase to discard
+
+            // NEW RULE: First turn, first draw - if choosing to draw again, must discard the card just drawn.
+            if (state.isFirstTurn && state.firstTurnDrawCount === 1 && action.payload.endFirstTurn === false) {
+                if (action.payload.cardId !== state.lastDrawnCardId) {
+                    return {
+                        ...state,
+                        logs: [...state.logs, "Must discard the card you just drawn to draw again!"]
+                    };
+                }
+            }
 
             // SWEEP ENFORCEMENT: If player swept but didn't meld, undo the sweep
             if (state.mustMeldAfterSweep) {

@@ -531,6 +531,12 @@ export function GameBoard() {
 
     const handleFirstTurnChoice = (endTurn: boolean) => {
         if (peerId && showFirstTurnChoice) {
+            // Enforcement: If drawing again, must be the last drawn card
+            if (!endTurn && showFirstTurnChoice.cardId !== state.lastDrawnCardId) {
+                showToast(t.mustDiscardLastDrawn);
+                return;
+            }
+
             playSound(discardSound);
             actions.discardCard(peerId, showFirstTurnChoice.cardId, endTurn);
             setShowFirstTurnChoice(null);
@@ -824,7 +830,8 @@ export function GameBoard() {
                                             </button>
                                             <button
                                                 onClick={() => handleFirstTurnChoice(false)}
-                                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-sm transition-all shadow-lg border border-blue-400">
+                                                disabled={showFirstTurnChoice.cardId !== state.lastDrawnCardId}
+                                                className={`px-4 py-2 font-bold rounded-lg text-sm transition-all shadow-lg border ${showFirstTurnChoice.cardId === state.lastDrawnCardId ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-400' : 'bg-slate-700 text-slate-400 border-slate-600 cursor-not-allowed opacity-50'}`}>
                                                 {t.discardAndDraw}
                                             </button>
                                         </div>

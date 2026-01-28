@@ -67,6 +67,7 @@ export const translations = {
         meldBtn: "Meld",
         discardAndEnd: "Discard and End",
         discardAndDraw: "Discard and Draw Again",
+        mustDiscardLastDrawn: "You must discard the card you just drew to draw again!",
 
         // Inputs
         yourNameLabel: "Your Name",
@@ -150,6 +151,7 @@ export const translations = {
         meldBtn: "فتح",
         discardAndEnd: "رمي وإنهاء",
         discardAndDraw: "رمي وسحب مرة أخرى",
+        mustDiscardLastDrawn: "يجب عليك رمي الورقة التي سحبتها للتو لتسحب مرة أخرى!",
 
         // Inputs
         yourNameLabel: "اسمك",
