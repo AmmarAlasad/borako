@@ -30,6 +30,8 @@ export interface Player {
     isHost: boolean;
 }
 
+
+
 export interface Team {
     id: 'A' | 'B';
     name?: string; // Custom Team Name
@@ -65,6 +67,10 @@ export interface GameState {
     hasSwept: boolean; // Track if current player swept (forces meld)
     mustMeldAfterSweep: boolean; // Enforce meld requirement after sweep
     sweptCards: Card[]; // Cards that were swept (for undo if player doesn't meld)
+
+    // First Turn Special Rule
+    isFirstTurn: boolean;
+    firstTurnDrawCount: number;
 
     // Messages/Logs
     logs: string[];

@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { Card } from './Card';
-import { AnimatePresence, Reorder } from 'framer-motion';
+import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { calculateMeldBonus } from '../../engine/scoring';
 import { translations, type Language } from '../../lib/translations';
 
@@ -14,6 +14,7 @@ export function GameBoard() {
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [showSettings, setShowSettings] = useState(false);
     const [soundEnabled, setSoundEnabled] = useState(true);
+    const [showFirstTurnChoice, setShowFirstTurnChoice] = useState<{ cardId: string } | null>(null);
 
     // Audio Refs
     const drawSound = useRef(new Audio('/sounds/card-draw.wav'));
@@ -514,8 +515,25 @@ export function GameBoard() {
             return;
         }
         if (peerId && selectedCards.length === 1) {
+            const cardId = selectedCards[0];
+
+            // SPECIAL RULE: First Turn Choice
+            if (state.isFirstTurn && state.firstTurnDrawCount === 1) {
+                setShowFirstTurnChoice({ cardId });
+                return;
+            }
+
             playSound(discardSound);
-            actions.discardCard(peerId, selectedCards[0]);
+            actions.discardCard(peerId, cardId);
+            setSelectedCards([]);
+        }
+    };
+
+    const handleFirstTurnChoice = (endTurn: boolean) => {
+        if (peerId && showFirstTurnChoice) {
+            playSound(discardSound);
+            actions.discardCard(peerId, showFirstTurnChoice.cardId, endTurn);
+            setShowFirstTurnChoice(null);
             setSelectedCards([]);
         }
     };
@@ -789,6 +807,36 @@ export function GameBoard() {
                                 </button>
                             </div>
 
+                            {/* FIRST TURN CHOICE MODAL/OVERLAY */}
+                            <AnimatePresence>
+                                {showFirstTurnChoice && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 20 }}
+                                        className="absolute -top-32 flex flex-col items-center gap-2 z-[100] bg-slate-900/90 p-4 rounded-xl border border-yellow-500/30 backdrop-blur-md shadow-2xl">
+                                        <div className="text-yellow-400 font-bold text-xs uppercase tracking-widest mb-1">{t.yourTurn} (First Turn Special)</div>
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={() => handleFirstTurnChoice(true)}
+                                                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-sm transition-all shadow-lg border border-red-400">
+                                                {t.discardAndEnd}
+                                            </button>
+                                            <button
+                                                onClick={() => handleFirstTurnChoice(false)}
+                                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-sm transition-all shadow-lg border border-blue-400">
+                                                {t.discardAndDraw}
+                                            </button>
+                                        </div>
+                                        <button
+                                            onClick={() => setShowFirstTurnChoice(null)}
+                                            className="text-[10px] text-slate-400 hover:text-white mt-1 uppercase">
+                                            {t.back}
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
                             {myPlayer && (
                                 <Reorder.Group axis="x" values={handCards} onReorder={(newOrder) => { if (peerId) actions.reorderHand(peerId, newOrder); }} className="flex -space-x-12 px-8">
                                     <AnimatePresence initial={false}>
@@ -864,18 +912,8 @@ export function GameBoard() {
                                 </div>
                             )}
                         </div>
-                        <div className="mt-4 text-xs font-black text-white/50 bg-black/30 px-3 py-1 rounded-full uppercase tracking-widest">
-                            {t.mourArea}
-                        </div>
-
-                        <div className="mt-4 text-[10px] text-white/40 font-mono text-center">
-                            Phase: {state.turnPhase}
-                            <br />
-                            Turn: {isMyTurn ? 'YOU' : state.currentTurnPlayerId?.slice(0, 4)}
-                        </div>
                     </div>
                 </div>
-
             </div>
             {renderSettingsModal()}
         </div>

@@ -97,8 +97,8 @@ export function useGame() {
         meldCards: (playerId: string, cards: Card[]) => {
             handleAction({ type: 'MELD_CARDS', payload: { playerId, cards } });
         },
-        discardCard: (playerId: string, cardId: string) => {
-            handleAction({ type: 'DISCARD_CARD', payload: { playerId, cardId } });
+        discardCard: (playerId: string, cardId: string, endFirstTurn?: boolean) => {
+            handleAction({ type: 'DISCARD_CARD', payload: { playerId, cardId, endFirstTurn } });
         },
         reorderHand: (playerId: string, newOrder: Card[]) => {
             // OPTIMISTIC UPDATE: Dispatch immediately to avoid UI glitch for clients

@@ -13,7 +13,7 @@ export type GameAction =
     | { type: 'SWEEP_PILE'; payload: { playerId: string } }
     | { type: 'MELD_CARDS'; payload: { playerId: string; cards: Card[] } }
     | { type: 'ADD_TO_MELD'; payload: { playerId: string; meldId: string; cards: Card[] } }
-    | { type: 'DISCARD_CARD'; payload: { playerId: string; cardId: string } }
+    | { type: 'DISCARD_CARD'; payload: { playerId: string; cardId: string; endFirstTurn?: boolean } }
     | { type: 'REORDER_HAND'; payload: { playerId: string; newOrder: Card[] } }
     | { type: 'KICK_PLAYER'; payload: { playerId: string } }
     | { type: 'SWITCH_TEAM'; payload: { playerId: string } }
@@ -36,6 +36,8 @@ export const INITIAL_STATE: GameState = {
     hasSwept: false,
     mustMeldAfterSweep: false,
     sweptCards: [],
+    isFirstTurn: false,
+    firstTurnDrawCount: 0,
     logs: [],
 };
 
@@ -150,10 +152,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 p.hand = sortHand(rawHand); // AUTO SORT ON DEAL
             });
 
-            // Flip one card for discard?
-            // Usually yes.
-            const firstDiscard = deck.pop();
-            const discardPile = firstDiscard ? [firstDiscard] : [];
+            const discardPile: Card[] = [];
 
             return {
                 ...state,
@@ -168,6 +167,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 currentTurnPlayerId: state.players[0].id,
                 turnPhase: 'WAITING_FOR_DRAW',
                 hasSwept: false,
+                isFirstTurn: true,
+                firstTurnDrawCount: 0,
                 logs: [...state.logs, "Game Started!"]
             };
         }
@@ -193,6 +194,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 deck: newDeck,
                 players,
                 turnPhase: 'PLAYING',
+                firstTurnDrawCount: state.isFirstTurn ? state.firstTurnDrawCount + 1 : state.firstTurnDrawCount,
                 logs: [...state.logs, "Player drew a card"]
             };
         }
@@ -219,6 +221,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 hasSwept: true, // Must Meld!
                 mustMeldAfterSweep: true, // Enforce meld requirement
                 sweptCards: discardPile, // Store for potential undo
+                isFirstTurn: false, // Sweeping ends the special first-turn drawing rule
                 logs: [...state.logs, "Player swept the pile!"]
             };
         }
@@ -508,6 +511,19 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             nextState.mustMeldAfterSweep = false;
             nextState.sweptCards = [];
 
+            // If it was first turn, ending it now
+            if (state.isFirstTurn) {
+                // If the player chose to end or it was the 2nd draw
+                if (action.payload.endFirstTurn || state.firstTurnDrawCount >= 2) {
+                    nextState.isFirstTurn = false;
+                    nextState.firstTurnDrawCount = 0;
+                } else {
+                    // Stay on current player, but back to DRAW PHASE
+                    nextState.currentTurnPlayerId = state.currentTurnPlayerId;
+                    nextState.turnPhase = 'WAITING_FOR_DRAW';
+                }
+            }
+
             return nextState;
         }
 
@@ -521,8 +537,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             const mourB = newDeck.splice(0, 11);
 
             const players = state.players.map(p => ({ ...p, hand: sortHand(newDeck.splice(0, 11)) })); // AUTO SORT
-            const firstDiscard = newDeck.pop();
-            const discardPile = firstDiscard ? [firstDiscard] : [];
+            const discardPile: Card[] = [];
 
             return {
                 ...state,

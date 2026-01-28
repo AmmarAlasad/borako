@@ -65,6 +65,8 @@ export const translations = {
         discardPileLabel: "DISCARD PILE",
         discardEmpty: "Discard Empty",
         meldBtn: "Meld",
+        discardAndEnd: "Discard and End",
+        discardAndDraw: "Discard and Draw Again",
 
         // Inputs
         yourNameLabel: "Your Name",
@@ -146,6 +148,8 @@ export const translations = {
         discardPileLabel: "كومة الرمي",
         discardEmpty: "الكومة فارغة",
         meldBtn: "فتح",
+        discardAndEnd: "رمي وإنهاء",
+        discardAndDraw: "رمي وسحب مرة أخرى",
 
         // Inputs
         yourNameLabel: "اسمك",
