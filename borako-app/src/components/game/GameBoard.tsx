@@ -869,10 +869,10 @@ export function GameBoard() {
                                     data-meld-id={meld.id}
                                     onClick={() => isMyTurn && myPlayer?.teamId === leftTeamId && toggleMeldSelect(meld.id)}
                                     className={`relative group transition-all cursor-pointer transform hover:scale-105 ${selectedMeldId === meld.id ? 'ring-2 ring-yellow-400 rounded-lg bg-white/5' : ''}`}>
-                                    <div className="flex -space-x-8">
+                                    <div className="flex -space-x-6 md:-space-x-7">
                                         {meld.cards.map((c, idx) => (
                                             <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
-                                                <Card card={c} className="w-20 h-28 md:w-24 md:h-36 border border-black/20" />
+                                                <Card card={c} className="w-14 h-20 md:w-16 md:h-24 border border-black/20" />
                                             </div>
                                         ))}
                                     </div>
@@ -901,10 +901,10 @@ export function GameBoard() {
                                     data-meld-id={meld.id}
                                     onClick={() => isMyTurn && myPlayer?.teamId === rightTeamId && toggleMeldSelect(meld.id)}
                                     className={`relative group transition-all cursor-pointer transform hover:scale-105 ${selectedMeldId === meld.id ? 'ring-2 ring-yellow-400 rounded-lg bg-white/5' : ''}`}>
-                                    <div className="flex -space-x-8">
+                                    <div className="flex -space-x-6 md:-space-x-7">
                                         {meld.cards.map((c, idx) => (
                                             <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
-                                                <Card card={c} className="w-20 h-28 md:w-24 md:h-36 border border-black/20" />
+                                                <Card card={c} className="w-14 h-20 md:w-16 md:h-24 border border-black/20" />
                                             </div>
                                         ))}
                                     </div>
