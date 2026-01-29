@@ -666,14 +666,14 @@ export function GameBoard() {
 
 
     return (
-        <div className="flex flex-col h-screen w-screen bg-[#35654d] text-white overflow-hidden relative font-sans select-none">
-            <div className="absolute top-4 left-4 z-[60]">
+        <div className="flex flex-col h-screen max-md:h-[100dvh] w-screen bg-[#35654d] text-white overflow-hidden relative font-sans select-none">
+            <div className="absolute top-4 left-4 max-md:top-2 max-md:left-2 z-[60]">
                 <button
                     onClick={() => setShowSettings(true)}
-                    className="p-2 bg-black/20 hover:bg-black/40 rounded-full text-white/50 hover:text-white transition-all backdrop-blur-sm"
+                    className="p-2 max-md:p-1.5 bg-black/20 hover:bg-black/40 rounded-full text-white/50 hover:text-white transition-all backdrop-blur-sm"
                     title={t.settings}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="max-md:w-5 max-md:h-5"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
                 </button>
             </div>
             {/* Background Texture Overlay */}
@@ -690,58 +690,61 @@ export function GameBoard() {
             )}
 
             {/* Main Grid Container */}
-            <div className="relative z-10 w-full h-full grid grid-rows-[15%_55%_30%] p-4 gap-4">
+            <div className="relative z-10 w-full h-full grid md:grid-rows-[15%_55%_30%] max-md:flex max-md:flex-col p-4 max-md:p-0 gap-4 max-md:gap-0">
 
-                {/* --- TOP ROW: Teammate --- */}
-                <div className="relative flex justify-center items-start">
+                {/* --- TOP ROW: Teammate + Score --- */}
+                <div className="relative flex md:justify-center md:items-start max-md:flex-col max-md:justify-center max-md:items-center w-full max-md:h-auto max-md:py-2 max-md:flex-none z-50 px-2 max-md:bg-black/20 max-md:gap-2">
+
+                    {/* Teammate (Compact Top Left on Mobile, Center Top on Desktop) */}
                     {teammate ? (
-                        <div className={`flex flex-col items-center transition-all duration-300 ${teammate.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
-                            {/* Name Badge Above Cards */}
-                            <div className="mb-1 bg-black/50 px-3 py-1 rounded-full backdrop-blur-sm border border-white/20">
+                        <div className={`flex items-center gap-2 max-md:w-auto md:flex-col md:transition-all md:duration-300 max-md:order-2 ${teammate.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
+                            {/* Desktop Name Badge */}
+                            <div className="mb-1 hidden md:block bg-black/50 px-3 py-1 rounded-full backdrop-blur-sm border border-white/20">
                                 <span className={`font-bold tracking-wide text-sm ${teammate.id === state.currentTurnPlayerId ? 'text-yellow-400' : 'text-blue-100'}`}>
                                     {teammate.name.toUpperCase()}
                                 </span>
                             </div>
 
-                            {/* Stacked Card Backs (Smaller) */}
-                            <div className="relative h-20 flex justify-center items-center">
-                                <div className="flex -space-x-6">
+                            <div className="relative flex items-center h-10 md:h-20">
+                                {/* Compact Card Row - Evenly Spaced */}
+                                <div className="flex -space-x-4 max-md:-space-x-3 items-center md:-space-x-6">
                                     {Array.from({ length: teammate ? getVisibleCardCount(teammate.id, teammate.hand.length) : 0 }).map((_, i) => (
-                                        <div key={i} className="relative hover:-translate-y-2 transition-transform">
-                                            <Card isFaceDown deckColor={i % 2 === 0 ? 'blue' : 'red'} className="w-16 h-24 shadow-md" />
-                                        </div>
+                                        <Card key={i} isFaceDown deckColor={i % 2 === 0 ? 'blue' : 'red'} className="w-8 h-12 md:w-16 md:h-24 shadow-sm border border-white/20 md:shadow-md" />
                                     ))}
                                 </div>
-                                {/* Enhanced Count Badge */}
-                                <div className="absolute -right-8 top-0 bg-yellow-500 text-black font-black text-xs px-2 py-0.5 rounded-full border border-white shadow-xl z-20">
+                                <div className="absolute -right-2 -top-2 bg-yellow-500 text-black text-[10px] font-bold px-1.5 rounded-full border border-white shadow-sm z-10 transition-transform hover:scale-110 cursor-default md:text-xs md:px-2 md:py-0.5 md:-right-8 md:top-0">
                                     {teammate.hand.length}
                                 </div>
                             </div>
-                        </div>
-                    ) : (
-                        <div className="opacity-30 text-sm font-bold uppercase tracking-widest">{t.noTeammate}</div>
-                    )}
 
-                    {/* Score Board (Top Center Overlay) */}
-                    <div className="absolute top-0 right-0 bg-black/60 px-6 py-3 rounded-xl border border-white/20 backdrop-blur-md shadow-xl">
-                        <div className="flex gap-8 text-base font-black tracking-wider">
-                            <div className="text-blue-400 flex flex-col items-center leading-none">
-                                <span>{state.teams.A.name || t.teamA}</span>
-                                <span className="text-2xl text-white">{state.teams.A.totalScore}</span>
-                                <span className="text-[10px] text-white/50">+{state.teams.A.roundScore}</span>
+                            {/* Mobile Name (Side) */}
+                            <span className={`text-xs font-bold whitespace-nowrap md:hidden ${teammate.id === state.currentTurnPlayerId ? 'text-yellow-400' : 'text-blue-100'}`}>
+                                {teammate.name.substring(0, 8).toUpperCase()}
+                            </span>
+                        </div>
+                    ) : <div></div>}
+
+                    {/* Score Board (Compact Top Right on Mobile, Center Overlay on Desktop) */}
+                    <div className="bg-black/60 px-3 py-1 rounded-lg border border-white/20 backdrop-blur-md md:absolute md:top-0 md:right-0 md:px-6 md:py-3 md:rounded-xl md:bg-black/60 max-md:order-1">
+                        <div className="flex gap-3 text-xs font-black tracking-wider md:gap-8 md:text-base">
+                            <div className="text-blue-400 flex items-center gap-1 md:flex-col md:leading-none">
+                                <span>{state.teams.A.name || (typeof window !== 'undefined' && window.innerWidth > 768 ? t.teamA : 'A')}</span>
+                                <span className="text-white text-sm md:text-2xl">{state.teams.A.totalScore}</span>
+                                <span className="hidden md:block text-[10px] text-white/50">+{state.teams.A.roundScore}</span>
                             </div>
-                            <div className="w-px bg-white/20"></div>
-                            <div className="text-red-400 flex flex-col items-center leading-none">
-                                <span>{state.teams.B.name || t.teamB}</span>
-                                <span className="text-2xl text-white">{state.teams.B.totalScore}</span>
-                                <span className="text-[10px] text-white/50">+{state.teams.B.roundScore}</span>
+                            <div className="w-px bg-white/20 h-4 md:h-auto"></div>
+                            <div className="text-red-400 flex items-center gap-1 md:flex-col md:leading-none">
+                                <span className="hidden md:inline">{state.teams.B.name || t.teamB}</span>
+                                <span className="text-white text-sm md:text-2xl">{state.teams.B.totalScore}</span>
+                                <span className="md:hidden">{state.teams.B.name || 'B'}</span>
+                                <span className="hidden md:block text-[10px] text-white/50">+{state.teams.B.roundScore}</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* --- MIDDLE ROW: Enemies + Melds --- */}
-                <div className="grid grid-cols-[10%_40%_40%_10%] h-full w-full gap-3">
+                <div className="grid md:grid-cols-[10%_40%_40%_10%] max-md:grid-cols-[auto_1fr_auto] max-md:grid-rows-[1fr] h-full w-full gap-3 max-md:gap-1 max-md:flex-1 max-md:min-h-0 md:overflow-visible md:items-stretch items-start max-md:px-2">
 
                     {/* DEALING ANIMATION OVERLAY */}
                     <AnimatePresence>
@@ -755,7 +758,7 @@ export function GameBoard() {
                                     {/* Static Deck Background */}
                                     {[0, 1, 2].map(i => (
                                         <div key={i} className="absolute inset-0" style={{ transform: `translate(-${i * 3}px, -${i * 3}px)` }}>
-                                            <Card isFaceDown deckColor={state.deck.length % 2 === 0 ? 'blue' : 'red'} className="w-full h-full shadow-lg" />
+                                            <Card isFaceDown deckColor={i % 2 === 0 ? 'blue' : 'red'} className="w-full h-full shadow-lg" />
                                         </div>
                                     ))}
 
@@ -824,25 +827,27 @@ export function GameBoard() {
 
 
                     {/* LEFT COLUMN: Enemy 1 (Left) */}
-                    <div className="flex items-start justify-center mt-[-30px]">
+                    <div className="flex items-start justify-center max-md:mt-0 max-md:col-start-1 max-md:row-start-1 max-md:pt-2">
                         {enemyLeft && (
-                            <div className={`flex flex-col items-center gap-2 transition-all duration-300 ${enemyLeft.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
+                            <div className={`flex flex-col items-center gap-1 transition-all duration-300 ${enemyLeft.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
                                 {/* Name Badge Above */}
-                                <div className="bg-black/50 px-2 py-1 rounded-lg border border-white/20 backdrop-blur-sm">
+                                <div className="bg-black/50 px-2 py-0.5 rounded-lg border border-white/20 backdrop-blur-sm max-md:scale-75 origin-bottom">
                                     <span className={`font-bold tracking-wide text-xs ${enemyLeft.id === state.currentTurnPlayerId ? 'text-yellow-400' : 'text-white'}`}>
                                         {enemyLeft.name.toUpperCase()}
                                     </span>
                                 </div>
 
-                                <div className="relative w-20 flex flex-col items-center h-[16rem] overflow-visible">
-                                    <div className="relative w-full h-full">
+                                <div className="relative w-20 max-md:w-16 flex flex-col items-center h-[16rem] max-md:h-auto overflow-visible">
+                                    <div className="relative w-full h-full flex flex-col items-center">
                                         {Array.from({ length: enemyLeft ? getVisibleCardCount(enemyLeft.id, enemyLeft.hand.length) : 0 }).map((_, i) => (
-                                            <div key={i} className="absolute left-0 w-full h-20 transition-all hover:translate-x-2" style={{ top: `${i * 30}px` }}>
-                                                <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-full shadow-md" />
+                                            <div key={i} className="absolute left-0 w-full flex justify-center md:hover:translate-x-2 transition-transform" style={{ top: `${i * (typeof window !== 'undefined' && window.innerWidth < 768 ? 25 : 15)}px`, height: '40px' }}>
+                                                <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-16 shadow-md max-md:rotate-90 max-md:origin-center max-md:w-12 max-md:h-16" />
                                             </div>
                                         ))}
+                                        {/* Spacer for flow if needed */}
+                                        <div style={{ height: `${(enemyLeft?.hand.length || 0) * 15 + 64}px` }}></div>
                                     </div>
-                                    <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-yellow-500 text-black font-bold text-xs px-2 py-0.5 rounded-full border border-white shadow-lg z-20">
+                                    <div className="absolute -bottom-2 md:bottom-[-12px] left-1/2 -translate-x-1/2 bg-yellow-500 text-black font-bold text-xs px-2 py-0.5 rounded-full border border-white shadow-lg z-20 scale-75">
                                         {enemyLeft.hand.length}
                                     </div>
                                 </div>
@@ -850,90 +855,101 @@ export function GameBoard() {
                         )}
                     </div>
 
-                    {/* CENTER LEFT: My/Left Team Melds */}
-                    <motion.div
-                        initial={{ opacity: 1 }}
-                        animate={{ opacity: isDealing ? 0 : 1 }}
-                        transition={{ duration: 0.5 }}
-                        className="bg-black/20 rounded-l-2xl border-r border-white/20 p-4 relative flex flex-col"
-                    >
-                        <div className={`text-xs font-black ${leftTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2`}>
-                            {leftTeamId === 'A' ? (state.teams.A.name || t.teamA) : (state.teams.B.name || t.teamB)} {t.melds} {leftTeamId === myTeamId ? `(${t.you})` : ''}
-                        </div>
-                        <div className="flex-1 flex flex-wrap content-start gap-2 overflow-visible">
-                            {(leftTeam?.melds || []).map(meld => (
-                                <div key={meld.id}
-                                    id={`meld-drop-${meld.id}`}
-                                    data-meld-id={meld.id}
-                                    onClick={() => isMyTurn && myPlayer?.teamId === leftTeamId && toggleMeldSelect(meld.id)}
-                                    className={`relative group transition-all cursor-pointer transform hover:scale-105 ${selectedMeldId === meld.id ? 'ring-2 ring-green-400 rounded-lg bg-white/5' : ''}`}>
-                                    <div className="flex -space-x-6 md:-space-x-7">
-                                        {meld.cards.map((c, idx) => (
-                                            <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
-                                                <Card card={c} className="w-14 h-20 md:w-16 md:h-24 border border-black/20" />
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="absolute -bottom-6 right-0 bg-black/60 text-[10px] font-bold text-white px-2 rounded-full border border-white/10">
-                                        {calculateMeldBonus(meld)}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </motion.div>
+                    {/* CENTER COLUMN WRAPPER FOR MOBILE MELDS */}
+                    <div className="contents max-md:flex max-md:flex-col max-md:col-start-2 max-md:gap-2 max-md:w-full max-md:h-full max-md:min-h-0">
 
-                    {/* CENTER RIGHT: Enemy/Right Team Melds */}
-                    <motion.div
-                        initial={{ opacity: 1 }}
-                        animate={{ opacity: isDealing ? 0 : 1 }}
-                        transition={{ duration: 0.5 }}
-                        className="bg-black/20 rounded-r-2xl border-l border-white/20 p-4 relative flex flex-col pl-6"
-                    >
-                        <div className={`text-xs font-black ${rightTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2 text-right`}>
-                            {rightTeamId === 'A' ? (state.teams.A.name || t.teamA) : (state.teams.B.name || t.teamB)} {t.melds} {rightTeamId !== myTeamId ? `(${t.enemy})` : ''}
-                        </div>
-                        <div className="flex-1 flex flex-wrap content-start gap-2 justify-end overflow-visible">
-                            {(rightTeam?.melds || []).map(meld => (
-                                <div key={meld.id}
-                                    id={`meld-drop-${meld.id}`}
-                                    data-meld-id={meld.id}
-                                    onClick={() => isMyTurn && myPlayer?.teamId === rightTeamId && toggleMeldSelect(meld.id)}
-                                    className={`relative group transition-all cursor-pointer transform hover:scale-105 ${selectedMeldId === meld.id ? 'ring-2 ring-green-400 rounded-lg bg-white/5' : ''}`}>
-                                    <div className="flex -space-x-6 md:-space-x-7">
-                                        {meld.cards.map((c, idx) => (
-                                            <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
-                                                <Card card={c} className="w-14 h-20 md:w-16 md:h-24 border border-black/20" />
+                        {/* CENTER RIGHT/TOP: Enemy/Right Team Melds */}
+                        <motion.div
+                            initial={{ opacity: 1 }}
+                            animate={{ opacity: isDealing ? 0 : 1 }}
+                            transition={{ duration: 0.5 }}
+                            className="bg-black/20 rounded-r-2xl max-md:rounded-xl border-l max-md:border border-white/20 p-4 max-md:p-2 relative flex flex-col pl-6 max-md:pl-2 max-md:w-full max-md:flex-1 max-md:min-h-[200px] md:h-full"
+                        >
+                            <div className={`text-xs font-black ${rightTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2 text-right max-md:text-left`}>
+                                {rightTeamId === 'A' ? (state.teams.A.name || t.teamA) : (state.teams.B.name || t.teamB)} {t.melds} {rightTeamId !== myTeamId ? `(${t.enemy})` : ''}
+                            </div>
+                            <div className="flex-1 flex flex-wrap content-start gap-2 justify-end max-md:justify-start overflow-visible min-h-[80px]">
+                                {(rightTeam?.melds || []).map(meld => (
+                                    <div key={meld.id}
+                                        id={`meld-drop-${meld.id}`}
+                                        data-meld-id={meld.id}
+                                        onClick={() => isMyTurn && myPlayer?.teamId === rightTeamId && toggleMeldSelect(meld.id)}
+                                        className={`relative group transition-all cursor-pointer md:hover:scale-105 ${selectedMeldId === meld.id ? 'z-30' : 'z-10'}`}>
+                                        <div className={`transition-all duration-200 scale-75 origin-top-left ${selectedMeldId === meld.id ? 'ring-4 ring-green-400 rounded-xl bg-white/10 shadow-[0_0_20px_rgba(74,222,128,0.4)]' : ''}`}>
+                                            <div className="flex -space-x-6 md:-space-x-7 p-1">
+                                                {meld.cards.map((c, idx) => (
+                                                    <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
+                                                        <Card card={c} className="w-14 h-20 md:w-16 md:h-24 border border-black/20" />
+                                                    </div>
+                                                ))}
                                             </div>
-                                        ))}
+                                            <div className="absolute -bottom-2 -right-2 bg-black/70 text-[10px] font-bold text-white px-2 py-0.5 rounded-full border border-white/20 shadow-lg">
+                                                {calculateMeldBonus(meld)}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="absolute -bottom-6 left-0 bg-black/60 text-[10px] font-bold text-white px-2 rounded-full border border-white/10">
-                                        {calculateMeldBonus(meld)}
+                                ))}
+                            </div>
+                        </motion.div>
+
+                        {/* CENTER LEFT/BOTTOM: My/Left Team Melds */}
+                        <motion.div
+                            initial={{ opacity: 1 }}
+                            animate={{ opacity: isDealing ? 0 : 1 }}
+                            transition={{ duration: 0.5 }}
+                            className="bg-black/20 rounded-l-2xl max-md:rounded-xl border-r max-md:border border-white/20 p-4 max-md:p-2 relative flex flex-col max-md:w-full max-md:flex-1 max-md:min-h-[200px] md:h-full"
+                        >
+                            <div className={`text-xs font-black ${leftTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2`}>
+                                {leftTeamId === 'A' ? (state.teams.A.name || t.teamA) : (state.teams.B.name || t.teamB)} {t.melds} {leftTeamId === myTeamId ? `(${t.you})` : ''}
+                            </div>
+                            <div className="flex-1 flex flex-wrap content-start gap-2 overflow-visible min-h-[80px]">
+                                {(leftTeam?.melds || []).map(meld => (
+                                    <div key={meld.id}
+                                        id={`meld-drop-${meld.id}`}
+                                        data-meld-id={meld.id}
+                                        onClick={() => isMyTurn && myPlayer?.teamId === leftTeamId && toggleMeldSelect(meld.id)}
+                                        className={`relative group transition-all cursor-pointer md:hover:scale-105 ${selectedMeldId === meld.id ? 'z-30' : 'z-10'}`}>
+                                        <div className={`transition-all duration-200 scale-75 origin-top-left ${selectedMeldId === meld.id ? 'ring-4 ring-green-400 rounded-xl bg-white/10 shadow-[0_0_20px_rgba(74,222,128,0.4)]' : ''}`}>
+                                            <div className="flex -space-x-6 md:-space-x-7 p-1">
+                                                {meld.cards.map((c, idx) => (
+                                                    <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
+                                                        <Card card={c} className="w-14 h-20 md:w-16 md:h-24 border border-black/20" />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="absolute -bottom-2 -right-2 bg-black/70 text-[10px] font-bold text-white px-2 py-0.5 rounded-full border border-white/20 shadow-lg">
+                                                {calculateMeldBonus(meld)}
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    </motion.div>
+                                ))}
+                            </div>
+                        </motion.div>
+
+                    </div>
 
                     {/* RIGHT COLUMN: Enemy 2 (Right) */}
-                    <div className="flex items-start justify-center mt-[-30px]">
+                    <div className="flex items-start justify-center max-md:mt-0 max-md:col-start-3 max-md:row-start-1 max-md:pt-2">
                         {enemyRight && (
-                            <div className={`flex flex-col items-center gap-2 transition-all duration-300 ${enemyRight.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
+                            <div className={`flex flex-col items-center gap-1 transition-all duration-300 ${enemyRight.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
                                 {/* Name Badge Above */}
-                                <div className="bg-black/50 px-2 py-1 rounded-lg border border-white/20 backdrop-blur-sm">
+                                <div className="bg-black/50 px-2 py-0.5 rounded-lg border border-white/20 backdrop-blur-sm max-md:scale-75 origin-bottom">
                                     <span className={`font-bold tracking-wide text-xs ${enemyRight.id === state.currentTurnPlayerId ? 'text-yellow-400' : 'text-white'}`}>
                                         {enemyRight.name.toUpperCase()}
                                     </span>
                                 </div>
 
-                                <div className="relative w-20 flex flex-col items-center h-[16rem] overflow-visible">
-                                    <div className="relative w-full h-full">
+                                <div className="relative w-20 max-md:w-16 flex flex-col items-center h-[16rem] max-md:h-auto overflow-visible">
+                                    <div className="relative w-full h-full flex flex-col items-center">
                                         {Array.from({ length: enemyRight ? getVisibleCardCount(enemyRight.id, enemyRight.hand.length) : 0 }).map((_, i) => (
-                                            <div key={i} className="absolute right-0 w-full h-20 transition-all hover:-translate-x-2" style={{ top: `${i * 30}px` }}>
-                                                <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-full shadow-md" />
+                                            <div key={i} className="absolute right-0 w-full flex justify-center md:hover:-translate-x-2 transition-transform" style={{ top: `${i * (typeof window !== 'undefined' && window.innerWidth < 768 ? 25 : 15)}px`, height: '40px' }}>
+                                                <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-16 shadow-md max-md:rotate-90 max-md:origin-center max-md:w-12 max-md:h-16" />
                                             </div>
                                         ))}
+                                        {/* Spacer for flow if needed */}
+                                        <div style={{ height: `${(enemyRight?.hand.length || 0) * 15 + 64}px` }}></div>
                                     </div>
-                                    <div className="absolute -bottom-3 right-1/2 translate-x-1/2 bg-yellow-500 text-black font-bold text-xs px-2 py-0.5 rounded-full border border-white shadow-lg z-20">
+                                    <div className="absolute -bottom-2 md:bottom-[-12px] right-1/2 translate-x-1/2 bg-yellow-500 text-black font-bold text-xs px-2 py-0.5 rounded-full border border-white shadow-lg z-20 scale-75">
                                         {enemyRight.hand.length}
                                     </div>
                                 </div>
@@ -942,11 +958,87 @@ export function GameBoard() {
                     </div>
                 </div>
 
-                {/* --- BOTTOM ROW: Controls & Hand --- */}
-                <div className="grid grid-cols-[12%_76%_12%] pt-2">
+                {/* --- BOTTOM ROW: Deck + Hand + Discard + Mour --- */}
+                <div className="grid grid-cols-[12%_76%_12%] max-md:flex max-md:flex-col pt-2 max-md:pt-0 max-md:flex-none z-20 max-md:bg-gradient-to-t max-md:from-black/40 max-md:to-transparent gap-2 max-md:px-2">
 
-                    {/* LEFT: Deck Only */}
-                    <div className="flex items-start justify-center pt-8">
+                    {/* MOBILE ONLY: Control Row (Deck | Discard | Mour) */}
+                    <div className="hidden max-md:grid max-md:grid-cols-3 max-md:w-full max-md:items-center max-md:gap-2">
+                        {/* Deck Position */}
+                        <div className="flex justify-start">
+                            {!isDealing && (
+                                <motion.div
+                                    layoutId="deck-container-mobile"
+                                    className="relative group cursor-pointer active:scale-95"
+                                    onClick={() => {
+                                        if (isMyTurn && state.turnPhase === 'WAITING_FOR_DRAW' && peerId) {
+                                            playSound(drawSound);
+                                            actions.drawCard(peerId);
+                                        }
+                                    }}>
+                                    <div className="relative w-14 h-[5rem]">
+                                        {[0, 1, 2].map(i => (
+                                            <div key={i} className="absolute inset-0" style={{ transform: `translate(-${i * 2}px, -${i * 2}px)` }}>
+                                                <Card isFaceDown deckColor={state.deck.length % 2 === 0 ? 'blue' : 'red'} className="w-full h-full shadow-lg border border-white/10" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="absolute -top-4 w-full text-center font-bold text-blue-200 tracking-widest uppercase text-[10px]">{state.deck.length}</div>
+                                </motion.div>
+                            )}
+                        </div>
+
+                        {/* Discard Position */}
+                        <div className="flex justify-center items-center h-full"
+                            onClick={() => {
+                                if (isMyTurn && state.turnPhase === 'WAITING_FOR_DRAW' && peerId && state.discardPile.length > 0) {
+                                    playSound(drawSound);
+                                    actions.sweepPile(peerId);
+                                }
+                            }}>
+                            {state.discardPile.length > 0 ? (
+                                <div className="relative h-[3.5rem] flex items-center cursor-pointer group active:scale-95 bg-slate-300/20 px-4 py-1 rounded-lg border border-white/20 backdrop-blur-sm shadow-xl">
+                                    <div className="flex -space-x-3">
+                                        {state.discardPile.slice(Math.max(0, state.discardPile.length - 8)).map((card) => (
+                                            <div key={card.id} className="relative">
+                                                <Card card={card} className="w-8 h-12 shadow-lg brightness-90 border border-black/30" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="absolute -top-4 left-0 w-full text-center font-bold text-white/80 uppercase text-[10px] tracking-widest">{t.discard}</div>
+                                </div>
+                            ) : (
+                                <div className="w-[6rem] h-[3.5rem] bg-slate-300/10 border-2 border-dashed border-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                                    <span className="text-white/40 font-bold tracking-widest text-[8px] uppercase">{t.discardEmpty}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Mour Position */}
+                        <div className="flex justify-end items-center">
+                            <div className="relative w-14 h-14 flex items-center justify-center">
+                                {moursRemaining > 0 && (
+                                    <div className="absolute z-0">
+                                        <Card isFaceDown deckColor="red" className="w-14 h-20 shadow-lg border border-white/10" />
+                                        <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-xl max-md:text-sm">11</div>
+                                    </div>
+                                )}
+                                {moursRemaining > 1 && (
+                                    <div className="absolute z-10 rotate-90">
+                                        <Card isFaceDown deckColor="blue" className="w-14 h-20 shadow-lg border border-white/10" />
+                                        <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-xl max-md:text-sm -rotate-90">11</div>
+                                    </div>
+                                )}
+                                {moursRemaining === 0 && (
+                                    <div className="text-white/20 text-xs font-bold uppercase tracking-widest border-2 border-white/10 border-dashed p-1 rounded-lg text-[8px]">
+                                        Empty
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* DESKTOP ONLY: Original 3-col Grid Cell 1 (Left Deck) */}
+                    <div className="flex items-start justify-center pt-8 max-md:hidden">
                         {!isDealing && (
                             <motion.div
                                 layoutId="deck-container"
@@ -958,7 +1050,7 @@ export function GameBoard() {
                                     }
                                 }}>
                                 {/* Deck Stack Visual (Using Real Cards) */}
-                                <div className="relative w-28 h-[10.5rem]">
+                                <div className="relative w-28 h-[10.5rem] max-md:w-20 max-md:h-[7.5rem]">
                                     {[0, 1, 2].map(i => (
                                         <div key={i} className="absolute inset-0" style={{ transform: `translate(-${i * 3}px, -${i * 3}px)` }}>
                                             <Card isFaceDown deckColor={state.deck.length % 2 === 0 ? 'blue' : 'red'} className="w-full h-full shadow-lg" />
@@ -970,11 +1062,11 @@ export function GameBoard() {
                         )}
                     </div>
 
-                    {/* CENTER: Discard (Top) + Hand (Bottom) */}
-                    <div className="relative flex flex-col justify-end items-center h-full">
+                    {/* CENTER CELL: Hand + (on Desktop) Discard Top */}
+                    <div className="relative flex flex-col justify-end items-center h-full max-md:w-full">
 
-                        {/* 1. DISCARD AREA (Spread Above Hand) */}
-                        <div className="mb-4 w-full flex justify-center items-end"
+                        {/* DESKTOP ONLY: Discard Area (Spread Above Hand) */}
+                        <div className="mb-4 w-full flex justify-center items-end max-md:hidden"
                             onClick={() => {
                                 if (isMyTurn && state.turnPhase === 'WAITING_FOR_DRAW' && peerId && state.discardPile.length > 0) {
                                     playSound(drawSound);
@@ -983,7 +1075,6 @@ export function GameBoard() {
                             }}>
                             {state.discardPile.length > 0 ? (
                                 <div className="relative h-[7.2rem] flex items-center cursor-pointer group hover:scale-105 transition-transform bg-slate-300/20 px-[4rem] py-2 rounded-2xl border border-white/20 backdrop-blur-sm shadow-xl">
-                                    {/* Fan the last 8 cards horizontally */}
                                     <div className="flex -space-x-8">
                                         {state.discardPile.slice(Math.max(0, state.discardPile.length - 8)).map((card) => (
                                             <div key={card.id} className="relative hover:-translate-y-4 transition-transform duration-200">
@@ -991,9 +1082,7 @@ export function GameBoard() {
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="ml-6 bg-black/60 px-3 py-1 rounded-full text-xs font-bold text-yellow-500 border border-yellow-500/30 opacity-80 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                        {t.discardPileLabel} ({state.discardPile.length})
-                                    </div>
+                                    <div className="absolute -top-6 left-0 w-full text-center font-bold text-white/80 uppercase text-xs tracking-widest">{t.discard}</div>
                                 </div>
                             ) : (
                                 <div className="w-[15.6rem] h-[7.2rem] bg-slate-300/10 border-2 border-dashed border-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
@@ -1002,26 +1091,26 @@ export function GameBoard() {
                             )}
                         </div>
 
-                        {/* 2. PLAYER HAND */}
-                        <div className="relative flex justify-center w-full z-20 pb-4">
-                            {/* Action Buttons (Floating above hand) */}
-                            <div className={`absolute -top-20 flex gap-4 transition-all duration-200 z-50 ${selectedCards.length > 0 ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-95 pointer-events-none'}`}>
+                        {/* PLAYER HAND (Shared Desktop/Mobile but styled differently) */}
+                        <div className="relative flex justify-center w-full z-20 pb-4 max-md:pb-1">
+                            {/* Action Buttons (Floating) */}
+                            <div className={`absolute -top-20 max-md:-top-16 flex gap-4 max-md:gap-1 transition-all duration-200 z-50 ${selectedCards.length > 0 ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-95 pointer-events-none'}`}>
                                 <button
                                     disabled={!isMyTurn}
                                     onClick={handleMeld}
-                                    className="px-6 py-2 bg-gradient-to-t from-yellow-700 to-yellow-500 text-white font-black rounded-lg shadow-[0_0_15px_rgba(234,179,8,0.5)] border-2 border-yellow-300 hover:scale-105 active:scale-95 uppercase tracking-wider text-sm">
+                                    className="px-6 py-2 max-md:px-2 max-md:py-1 bg-gradient-to-t from-yellow-700 to-yellow-500 text-white font-black rounded-lg shadow-lg border border-yellow-300 hover:scale-105 active:scale-95 uppercase tracking-wider text-sm max-md:text-[10px]">
                                     {t.meldBtn}
                                 </button>
                                 <button
-                                    disabled={!isMyTurn || !selectedMeldId}
+                                    disabled={!isMyTurn}
                                     onClick={handleAddToMeld}
-                                    className="px-6 py-2 bg-gradient-to-t from-blue-700 to-blue-500 text-white font-black rounded-lg shadow-[0_0_15px_rgba(59,130,246,0.5)] border-2 border-blue-300 hover:scale-105 active:scale-95 uppercase tracking-wider text-sm">
+                                    className="px-6 py-2 max-md:px-2 max-md:py-1 bg-gradient-to-t from-blue-700 to-blue-500 text-white font-black rounded-lg shadow-lg border border-blue-300 hover:scale-105 active:scale-95 uppercase tracking-wider text-sm max-md:text-[10px]">
                                     {t.addToMeld}
                                 </button>
                                 <button
-                                    disabled={!isMyTurn || selectedCards.length !== 1}
+                                    disabled={!isMyTurn}
                                     onClick={handleDiscard}
-                                    className="px-6 py-2 bg-gradient-to-t from-red-700 to-red-500 text-white font-black rounded-lg shadow-[0_0_15px_rgba(239,68,68,0.5)] border-2 border-red-300 hover:scale-105 active:scale-95 uppercase tracking-wider text-sm">
+                                    className="px-6 py-2 max-md:px-2 max-md:py-1 bg-gradient-to-t from-red-700 to-red-500 text-white font-black rounded-lg shadow-lg border border-red-300 hover:scale-105 active:scale-95 uppercase tracking-wider text-sm max-md:text-[10px]">
                                     {t.discard}
                                 </button>
                             </div>
@@ -1075,7 +1164,12 @@ export function GameBoard() {
                                 let cardHeight = "h-48";
                                 let spacingClass = "-space-x-12";
 
-                                if (cardCount > 18) {
+                                // Mobile: smaller cards
+                                if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                                    cardWidth = "w-14";
+                                    cardHeight = "h-20";
+                                    spacingClass = "-space-x-8";
+                                } else if (cardCount > 18) {
                                     cardWidth = "w-20";
                                     cardHeight = "h-32";
                                     spacingClass = "-space-x-8";
@@ -1086,72 +1180,74 @@ export function GameBoard() {
                                 }
 
                                 return (
-                                    <Reorder.Group axis="x" values={visibleHand} onReorder={(newOrder) => { if (peerId) actions.reorderHand(peerId, newOrder); }} className={`flex ${spacingClass} px-8`}>
-                                        <AnimatePresence initial={false}>
-                                            {visibleHand.map((card) => (
-                                                <Reorder.Item key={card.id} value={card}
-                                                    initial={{ opacity: 0, scale: 0.5, x: -400, y: -30, rotate: -15, zIndex: 50 }}
-                                                    animate={{
-                                                        opacity: 1,
-                                                        scale: 1,
-                                                        x: 0,
-                                                        y: 0,
-                                                        rotate: 0,
-                                                        zIndex: 50,
-                                                        transition: { type: "spring", stiffness: 90, damping: 22 }
-                                                    }}
-                                                    onAnimationComplete={() => { }}
-                                                    whileDrag={{ scale: 1.1, zIndex: 100, boxShadow: "0px 10px 20px rgba(0,0,0,0.5)" }}
-                                                    onDragEnd={(_event, info) => {
-                                                        const dropTarget = document.elementFromPoint(info.point.x, info.point.y);
-                                                        const meldContainer = dropTarget?.closest('[data-meld-id]');
-                                                        if (meldContainer && isMyTurn && state.turnPhase === 'PLAYING' && peerId) {
-                                                            const meldId = meldContainer.getAttribute('data-meld-id');
-                                                            if (meldId) {
-                                                                actions.addToMeld(peerId, meldId, [card]);
+                                    <div className="w-full flex justify-center max-md:justify-start max-md:overflow-x-auto max-md:pb-2 no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+                                        <Reorder.Group axis="x" values={visibleHand} onReorder={(newOrder) => { if (peerId) actions.reorderHand(peerId, newOrder); }} className={`flex ${spacingClass} md:px-8 px-4 flex-nowrap`}>
+                                            <AnimatePresence initial={false}>
+                                                {visibleHand.map((card) => (
+                                                    <Reorder.Item key={card.id} value={card}
+                                                        initial={{ opacity: 0, scale: 0.5, x: -400, y: -30, rotate: -15, zIndex: 50 }}
+                                                        animate={{
+                                                            opacity: 1,
+                                                            scale: 1,
+                                                            x: 0,
+                                                            y: 0,
+                                                            rotate: 0,
+                                                            zIndex: 50,
+                                                            transition: { type: "spring", stiffness: 90, damping: 22 }
+                                                        }}
+                                                        onAnimationComplete={() => { }}
+                                                        whileDrag={{ scale: 1.1, zIndex: 100, boxShadow: "0px 10px 20px rgba(0,0,0,0.5)" }}
+                                                        onDragEnd={(_event, info) => {
+                                                            const dropTarget = document.elementFromPoint(info.point.x, info.point.y);
+                                                            const meldContainer = dropTarget?.closest('[data-meld-id]');
+                                                            if (meldContainer && isMyTurn && state.turnPhase === 'PLAYING' && peerId) {
+                                                                const meldId = meldContainer.getAttribute('data-meld-id');
+                                                                if (meldId) {
+                                                                    actions.addToMeld(peerId, meldId, [card]);
+                                                                }
                                                             }
-                                                        }
-                                                    }}
-                                                    className="relative"
-                                                >
-                                                    <div className="hover:-translate-y-10 transition-transform duration-200 origin-bottom hover:z-20 relative">
-                                                        <Card card={card}
-                                                            isSelected={selectedCards.includes(card.id)}
-                                                            onClick={() => toggleSelect(card.id)}
-                                                            disableLayout={true}
-                                                            disableHover={true}
-                                                            className={`${cardWidth} ${cardHeight} shadow-2xl border border-black/20`} />
-                                                    </div>
-                                                </Reorder.Item>
-                                            ))}
-                                        </AnimatePresence>
-                                    </Reorder.Group>
+                                                        }}
+                                                        className="relative flex-shrink-0"
+                                                    >
+                                                        <div className="hover:-translate-y-10 transition-transform duration-200 origin-bottom hover:z-20 relative">
+                                                            <Card card={card}
+                                                                isSelected={selectedCards.includes(card.id)}
+                                                                onClick={() => toggleSelect(card.id)}
+                                                                disableLayout={true}
+                                                                disableHover={true}
+                                                                className={`${cardWidth} ${cardHeight} shadow-2xl border border-black/20`} />
+                                                        </div>
+                                                    </Reorder.Item>
+                                                ))}
+                                            </AnimatePresence>
+                                        </Reorder.Group>
+                                    </div>
                                 );
                             })()}
                         </div>
                     </div>
 
-                    {/* RIGHT: Mour Area */}
-                    <div className="flex flex-col items-center justify-start pt-8 opacity-90">
+                    {/* DESKTOP ONLY: Original 3-col Grid Cell 3 (Right Mour) */}
+                    <div className="flex flex-col items-center justify-start pt-8 max-md:hidden opacity-90">
                         {/* Two distinct decks stacked: one vertical, one horizontal */}
                         <div className="relative w-36 h-36 flex items-center justify-center">
                             {/* Pile 1: Vertical (Only if at least 1 mour left) */}
                             {moursRemaining > 0 && (
                                 <div className="absolute transition-transform hover:scale-110 z-0">
-                                    <Card isFaceDown deckColor="red" className="w-24 h-36 shadow-lg" />
-                                    <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-xl">11</div>
+                                    <Card isFaceDown deckColor="red" className="w-24 h-36 max-md:w-14 max-md:h-20 shadow-lg border border-white/10" />
+                                    <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-xl max-md:text-sm">11</div>
                                 </div>
                             )}
                             {/* Pile 2: Horizontal (Only if 2 mours left) */}
                             {moursRemaining > 1 && (
                                 <div className="absolute transition-transform hover:scale-110 z-10 rotate-90">
-                                    <Card isFaceDown deckColor="blue" className="w-24 h-36 shadow-lg" />
-                                    <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-xl -rotate-90">11</div>
+                                    <Card isFaceDown deckColor="blue" className="w-24 h-36 max-md:w-14 max-md:h-20 shadow-lg border border-white/10" />
+                                    <div className="absolute inset-0 flex items-center justify-center font-bold text-white/50 text-xl max-md:text-sm -rotate-90">11</div>
                                 </div>
                             )}
                             {moursRemaining === 0 && (
-                                <div className="text-white/20 text-xs font-bold uppercase tracking-widest border-2 border-white/10 border-dashed p-4 rounded-lg">
-                                    No Mour
+                                <div className="text-white/20 text-xs font-bold uppercase tracking-widest border-2 border-white/10 border-dashed p-1 rounded-lg text-[8px]">
+                                    Empty
                                 </div>
                             )}
                         </div>
