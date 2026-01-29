@@ -713,11 +713,9 @@ export function GameBoard() {
                                     ))}
                                 </div>
                                 {/* Enhanced Count Badge */}
-                                {teammate.hand.length > 8 && (
-                                    <div className="absolute -right-6 top-0 bg-yellow-500 text-black font-black text-xs px-2 py-1 rounded-full border border-white shadow-xl z-20">
-                                        +{teammate.hand.length - 8}
-                                    </div>
-                                )}
+                                <div className="absolute -right-8 top-0 bg-yellow-500 text-black font-black text-xs px-2 py-0.5 rounded-full border border-white shadow-xl z-20">
+                                    {teammate.hand.length}
+                                </div>
                             </div>
                         </div>
                     ) : (
@@ -826,7 +824,7 @@ export function GameBoard() {
 
 
                     {/* LEFT COLUMN: Enemy 1 (Left) */}
-                    <div className="flex items-center justify-center">
+                    <div className="flex items-start justify-center mt-[-30px]">
                         {enemyLeft && (
                             <div className={`flex flex-col items-center gap-2 transition-all duration-300 ${enemyLeft.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
                                 {/* Name Badge Above */}
@@ -868,7 +866,7 @@ export function GameBoard() {
                                     id={`meld-drop-${meld.id}`}
                                     data-meld-id={meld.id}
                                     onClick={() => isMyTurn && myPlayer?.teamId === leftTeamId && toggleMeldSelect(meld.id)}
-                                    className={`relative group transition-all cursor-pointer transform hover:scale-105 ${selectedMeldId === meld.id ? 'ring-2 ring-yellow-400 rounded-lg bg-white/5' : ''}`}>
+                                    className={`relative group transition-all cursor-pointer transform hover:scale-105 ${selectedMeldId === meld.id ? 'ring-2 ring-green-400 rounded-lg bg-white/5' : ''}`}>
                                     <div className="flex -space-x-6 md:-space-x-7">
                                         {meld.cards.map((c, idx) => (
                                             <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
@@ -900,7 +898,7 @@ export function GameBoard() {
                                     id={`meld-drop-${meld.id}`}
                                     data-meld-id={meld.id}
                                     onClick={() => isMyTurn && myPlayer?.teamId === rightTeamId && toggleMeldSelect(meld.id)}
-                                    className={`relative group transition-all cursor-pointer transform hover:scale-105 ${selectedMeldId === meld.id ? 'ring-2 ring-yellow-400 rounded-lg bg-white/5' : ''}`}>
+                                    className={`relative group transition-all cursor-pointer transform hover:scale-105 ${selectedMeldId === meld.id ? 'ring-2 ring-green-400 rounded-lg bg-white/5' : ''}`}>
                                     <div className="flex -space-x-6 md:-space-x-7">
                                         {meld.cards.map((c, idx) => (
                                             <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
@@ -917,7 +915,7 @@ export function GameBoard() {
                     </motion.div>
 
                     {/* RIGHT COLUMN: Enemy 2 (Right) */}
-                    <div className="flex items-center justify-center">
+                    <div className="flex items-start justify-center mt-[-30px]">
                         {enemyRight && (
                             <div className={`flex flex-col items-center gap-2 transition-all duration-300 ${enemyRight.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
                                 {/* Name Badge Above */}
@@ -960,7 +958,7 @@ export function GameBoard() {
                                     }
                                 }}>
                                 {/* Deck Stack Visual (Using Real Cards) */}
-                                <div className="relative w-36 h-[13.5rem]">
+                                <div className="relative w-28 h-[10.5rem]">
                                     {[0, 1, 2].map(i => (
                                         <div key={i} className="absolute inset-0" style={{ transform: `translate(-${i * 3}px, -${i * 3}px)` }}>
                                             <Card isFaceDown deckColor={state.deck.length % 2 === 0 ? 'blue' : 'red'} className="w-full h-full shadow-lg" />
@@ -1059,54 +1057,77 @@ export function GameBoard() {
                                 )}
                             </AnimatePresence>
 
-                            {myPlayer && (
-                                <Reorder.Group axis="x" values={handCards.slice(0, getVisibleCardCount(myPlayer.id, handCards.length))} onReorder={(newOrder) => { if (peerId) actions.reorderHand(peerId, newOrder); }} className="flex -space-x-12 px-8">
-                                    <AnimatePresence initial={false}>
-                                        {handCards.slice(0, getVisibleCardCount(myPlayer.id, handCards.length)).map((card) => (
-                                            <Reorder.Item key={card.id} value={card}
-                                                // Draw Animation
-                                                initial={{ opacity: 0, scale: 0.5, x: -400, y: -30, rotate: -15, zIndex: 50 }}
-                                                animate={{
-                                                    opacity: 1,
-                                                    scale: 1,
-                                                    x: 0,
-                                                    y: 0,
-                                                    rotate: 0,
-                                                    zIndex: 50,
-                                                    transition: { type: "spring", stiffness: 90, damping: 22 }
-                                                }}
-                                                // Reset zIndex after animation so stacking works normally
-                                                onAnimationComplete={() => {
-                                                    // We can't easily reset zIndex via declarative animation without transitionEnd
-                                                    // But transitionEnd is clean:
-                                                }}
-                                                whileDrag={{ scale: 1.1, zIndex: 100, boxShadow: "0px 10px 20px rgba(0,0,0,0.5)" }}
-                                                onDragEnd={(_event, info) => {
-                                                    // Detection Logic
-                                                    const dropTarget = document.elementFromPoint(info.point.x, info.point.y);
-                                                    const meldContainer = dropTarget?.closest('[data-meld-id]');
+                            {/* PLAYER NAME / TURN INDICATOR */}
+                            <div className={`absolute -top-8 left-1/2 -translate-x-1/2 flex flex-col items-center z-30`}>
+                                <div className={`px-2 py-0 rounded-full backdrop-blur-sm border transition-all ${isMyTurn ? 'bg-yellow-500/20 border-yellow-500' : 'bg-black/40 border-white/5'}`}>
+                                    <span className={`font-bold tracking-wider text-[9px] uppercase ${isMyTurn ? 'text-yellow-400' : 'text-white/40'}`}>
+                                        {t.you} • {myPlayer?.name.toUpperCase()}
+                                    </span>
+                                </div>
+                            </div>
 
-                                                    if (meldContainer && isMyTurn && state.turnPhase === 'PLAYING' && peerId) {
-                                                        const meldId = meldContainer.getAttribute('data-meld-id');
-                                                        if (meldId) {
-                                                            actions.addToMeld(peerId, meldId, [card]);
+                            {myPlayer && (() => {
+                                const visibleHand = handCards.slice(0, getVisibleCardCount(myPlayer.id, handCards.length));
+                                const cardCount = visibleHand.length;
+
+                                // Dynamic variables for sizing and spacing
+                                let cardWidth = "w-32";
+                                let cardHeight = "h-48";
+                                let spacingClass = "-space-x-12";
+
+                                if (cardCount > 18) {
+                                    cardWidth = "w-20";
+                                    cardHeight = "h-32";
+                                    spacingClass = "-space-x-8";
+                                } else if (cardCount > 12) {
+                                    cardWidth = "w-24";
+                                    cardHeight = "h-36";
+                                    spacingClass = "-space-x-10";
+                                }
+
+                                return (
+                                    <Reorder.Group axis="x" values={visibleHand} onReorder={(newOrder) => { if (peerId) actions.reorderHand(peerId, newOrder); }} className={`flex ${spacingClass} px-8`}>
+                                        <AnimatePresence initial={false}>
+                                            {visibleHand.map((card) => (
+                                                <Reorder.Item key={card.id} value={card}
+                                                    initial={{ opacity: 0, scale: 0.5, x: -400, y: -30, rotate: -15, zIndex: 50 }}
+                                                    animate={{
+                                                        opacity: 1,
+                                                        scale: 1,
+                                                        x: 0,
+                                                        y: 0,
+                                                        rotate: 0,
+                                                        zIndex: 50,
+                                                        transition: { type: "spring", stiffness: 90, damping: 22 }
+                                                    }}
+                                                    onAnimationComplete={() => { }}
+                                                    whileDrag={{ scale: 1.1, zIndex: 100, boxShadow: "0px 10px 20px rgba(0,0,0,0.5)" }}
+                                                    onDragEnd={(_event, info) => {
+                                                        const dropTarget = document.elementFromPoint(info.point.x, info.point.y);
+                                                        const meldContainer = dropTarget?.closest('[data-meld-id]');
+                                                        if (meldContainer && isMyTurn && state.turnPhase === 'PLAYING' && peerId) {
+                                                            const meldId = meldContainer.getAttribute('data-meld-id');
+                                                            if (meldId) {
+                                                                actions.addToMeld(peerId, meldId, [card]);
+                                                            }
                                                         }
-                                                    }
-                                                }}
-                                                className="relative"> {/* Removed transition-transform to avoid conflict with Motion */}
-                                                <div className="hover:-translate-y-10 transition-transform duration-200 origin-bottom hover:z-20 relative">
-                                                    <Card card={card}
-                                                        isSelected={selectedCards.includes(card.id)}
-                                                        onClick={() => toggleSelect(card.id)}
-                                                        disableLayout={true} // Disable internal layout
-                                                        disableHover={true} // Disable internal hover
-                                                        className="w-32 h-48 shadow-2xl ring-1 ring-black/50" />
-                                                </div>
-                                            </Reorder.Item>
-                                        ))}
-                                    </AnimatePresence>
-                                </Reorder.Group>
-                            )}
+                                                    }}
+                                                    className="relative"
+                                                >
+                                                    <div className="hover:-translate-y-10 transition-transform duration-200 origin-bottom hover:z-20 relative">
+                                                        <Card card={card}
+                                                            isSelected={selectedCards.includes(card.id)}
+                                                            onClick={() => toggleSelect(card.id)}
+                                                            disableLayout={true}
+                                                            disableHover={true}
+                                                            className={`${cardWidth} ${cardHeight} shadow-2xl border border-black/20`} />
+                                                    </div>
+                                                </Reorder.Item>
+                                            ))}
+                                        </AnimatePresence>
+                                    </Reorder.Group>
+                                );
+                            })()}
                         </div>
                     </div>
 
