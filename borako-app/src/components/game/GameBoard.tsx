@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type CSSProperties } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { Card } from './Card';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
@@ -15,6 +15,7 @@ export function GameBoard() {
     const [showSettings, setShowSettings] = useState(false);
     const [soundEnabled, setSoundEnabled] = useState(true);
     const [showFirstTurnChoice, setShowFirstTurnChoice] = useState<{ cardId: string } | null>(null);
+    const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024));
 
     // Audio Refs
     const drawSound = useRef(new Audio('/sounds/card-draw.wav'));
@@ -138,6 +139,13 @@ export function GameBoard() {
             };
         }
     }, [state.phase, state.roundNumber]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const handleResize = () => setViewportWidth(window.innerWidth);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Helper to calculate how many cards should be visible in a player's hand during dealing
     const getVisibleCardCount = (targetPlayerId: string, totalHandSize: number) => {
@@ -1160,15 +1168,27 @@ export function GameBoard() {
                                 const cardCount = visibleHand.length;
 
                                 // Dynamic variables for sizing and spacing
+                                const isMobile = viewportWidth < 768;
                                 let cardWidth = "w-32";
                                 let cardHeight = "h-48";
                                 let spacingClass = "-space-x-12";
+                                let cardStyle: CSSProperties | undefined;
+                                let overlapPx = 0;
 
-                                // Mobile: smaller cards
-                                if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                                    cardWidth = "w-14";
-                                    cardHeight = "h-20";
-                                    spacingClass = "-space-x-8";
+                                // Mobile: fit hand to current viewport width
+                                if (isMobile) {
+                                    const horizontalPadding = 32; // px-4 left + right
+                                    const maxCardWidth = 112; // keep cards readable on phones
+                                    const overlapRatio = cardCount > 18 ? 0.75 : cardCount > 14 ? 0.72 : 0.7;
+                                    const stepRatio = 1 - overlapRatio;
+                                    const available = Math.max(1, viewportWidth - horizontalPadding);
+                                    const denom = 1 + Math.max(0, cardCount - 1) * stepRatio;
+                                    const computedWidth = available / Math.max(1, denom);
+                                    const cardWidthPx = Math.min(maxCardWidth, computedWidth);
+                                    const cardHeightPx = Math.round(cardWidthPx * 1.43);
+                                    overlapPx = Math.round(cardWidthPx * overlapRatio);
+                                    cardStyle = { width: `${Math.round(cardWidthPx)}px`, height: `${cardHeightPx}px` };
+                                    spacingClass = "";
                                 } else if (cardCount > 18) {
                                     cardWidth = "w-20";
                                     cardHeight = "h-32";
@@ -1183,7 +1203,7 @@ export function GameBoard() {
                                     <div className="w-full flex justify-center max-md:justify-start max-md:overflow-x-auto max-md:pb-2 no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
                                         <Reorder.Group axis="x" values={visibleHand} onReorder={(newOrder) => { if (peerId) actions.reorderHand(peerId, newOrder); }} className={`flex ${spacingClass} md:px-8 px-4 flex-nowrap`}>
                                             <AnimatePresence initial={false}>
-                                                {visibleHand.map((card) => (
+                                                {visibleHand.map((card, index) => (
                                                     <Reorder.Item key={card.id} value={card}
                                                         initial={{ opacity: 0, scale: 0.5, x: -400, y: -30, rotate: -15, zIndex: 50 }}
                                                         animate={{
@@ -1195,6 +1215,7 @@ export function GameBoard() {
                                                             zIndex: 50,
                                                             transition: { type: "spring", stiffness: 90, damping: 22 }
                                                         }}
+                                                        style={isMobile && overlapPx > 0 ? { marginLeft: index === 0 ? 0 : -overlapPx } : undefined}
                                                         onAnimationComplete={() => { }}
                                                         whileDrag={{ scale: 1.1, zIndex: 100, boxShadow: "0px 10px 20px rgba(0,0,0,0.5)" }}
                                                         onDragEnd={(_event, info) => {
@@ -1215,7 +1236,8 @@ export function GameBoard() {
                                                                 onClick={() => toggleSelect(card.id)}
                                                                 disableLayout={true}
                                                                 disableHover={true}
-                                                                className={`${cardWidth} ${cardHeight} shadow-2xl border border-black/20`} />
+                                                                className={`${isMobile ? '' : `${cardWidth} ${cardHeight}`} shadow-2xl border border-black/20`}
+                                                                style={cardStyle} />
                                                         </div>
                                                     </Reorder.Item>
                                                 ))}
