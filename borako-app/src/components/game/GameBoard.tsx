@@ -602,6 +602,35 @@ export function GameBoard() {
     // A team "has taken mour" means 1 pile is gone. 
     // moursRemaining = 2 - (A_taken ? 1 : 0) - (B_taken ? 1 : 0)
     const moursRemaining = 2 - (state.teams.A.hasTakenMour ? 1 : 0) - (state.teams.B.hasTakenMour ? 1 : 0);
+    const isMobileViewport = viewportWidth < 768;
+    const getMobileMeldCardClass = (meldCount: number) => {
+        if (meldCount >= 10) return 'w-9 h-[3.25rem]';
+        if (meldCount >= 8) return 'w-10 h-14';
+        if (meldCount >= 6) return 'w-10 h-[3.75rem]';
+        return 'w-11 h-16';
+    };
+    const getMobileMeldOverlapClass = (meldCount: number) => {
+        if (meldCount >= 8) return '-space-x-[0.875rem]';
+        if (meldCount >= 6) return '-space-x-4';
+        return '-space-x-[1.125rem]';
+    };
+    const rightMeldCardClass = getMobileMeldCardClass(rightTeam?.melds?.length || 0);
+    const leftMeldCardClass = getMobileMeldCardClass(leftTeam?.melds?.length || 0);
+    const rightMeldOverlapClass = getMobileMeldOverlapClass(rightTeam?.melds?.length || 0);
+    const leftMeldOverlapClass = getMobileMeldOverlapClass(leftTeam?.melds?.length || 0);
+    const mobileDiscardCount = state.discardPile.length;
+    const mobileDiscardContainerPx = isMobileViewport
+        ? Math.max(96, Math.floor((viewportWidth - 32) / 3))
+        : 224;
+    const mobileDiscardInnerPx = Math.max(72, mobileDiscardContainerPx - 16); // px-2 left + right
+    const mobileDiscardOverlapRatio = 0.72;
+    const mobileDiscardStepRatio = 1 - mobileDiscardOverlapRatio;
+    const mobileDiscardDenom = 1 + Math.max(0, mobileDiscardCount - 1) * mobileDiscardStepRatio;
+    const mobileDiscardCardWidthPx = mobileDiscardCount > 0
+        ? Math.max(10, Math.min(42, mobileDiscardInnerPx / Math.max(1, mobileDiscardDenom)))
+        : 0;
+    const mobileDiscardCardHeightPx = Math.round(mobileDiscardCardWidthPx * 1.43);
+    const mobileDiscardOverlapPx = Math.round(mobileDiscardCardWidthPx * mobileDiscardOverlapRatio);
 
     const toggleSelect = (cardId: string) => {
         setSelectedCards(prev =>
@@ -876,18 +905,18 @@ export function GameBoard() {
                             <div className={`text-xs font-black ${rightTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2 text-right max-md:text-left`}>
                                 {rightTeamId === 'A' ? (state.teams.A.name || t.teamA) : (state.teams.B.name || t.teamB)} {t.melds} {rightTeamId !== myTeamId ? `(${t.enemy})` : ''}
                             </div>
-                            <div className="flex-1 flex flex-wrap content-start gap-2 justify-end max-md:justify-start overflow-visible min-h-[80px]">
+                            <div className="flex-1 flex flex-wrap content-start gap-2 max-md:gap-0.5 justify-end max-md:justify-start overflow-visible max-md:overflow-y-auto min-h-[80px] max-md:pr-1">
                                 {(rightTeam?.melds || []).map(meld => (
                                     <div key={meld.id}
                                         id={`meld-drop-${meld.id}`}
                                         data-meld-id={meld.id}
                                         onClick={() => isMyTurn && myPlayer?.teamId === rightTeamId && toggleMeldSelect(meld.id)}
                                         className={`relative group transition-all cursor-pointer md:hover:scale-105 ${selectedMeldId === meld.id ? 'z-30' : 'z-10'}`}>
-                                        <div className={`transition-all duration-200 scale-75 origin-top-left ${selectedMeldId === meld.id ? 'ring-4 ring-green-400 rounded-xl bg-white/10 shadow-[0_0_20px_rgba(74,222,128,0.4)]' : ''}`}>
-                                            <div className="flex -space-x-6 md:-space-x-7 p-1">
+                                        <div className={`transition-all duration-200 scale-100 origin-top-left ${selectedMeldId === meld.id ? 'ring-4 ring-green-400 rounded-xl bg-white/10 shadow-[0_0_20px_rgba(74,222,128,0.4)]' : ''}`}>
+                                            <div className={`flex ${isMobileViewport ? rightMeldOverlapClass : '-space-x-7'} p-1`}>
                                                 {meld.cards.map((c, idx) => (
                                                     <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
-                                                        <Card card={c} className="w-14 h-20 md:w-16 md:h-24 border border-black/20" />
+                                                        <Card card={c} className={`${isMobileViewport ? rightMeldCardClass : 'w-16 h-24'} border border-black/20`} />
                                                     </div>
                                                 ))}
                                             </div>
@@ -910,18 +939,18 @@ export function GameBoard() {
                             <div className={`text-xs font-black ${leftTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2`}>
                                 {leftTeamId === 'A' ? (state.teams.A.name || t.teamA) : (state.teams.B.name || t.teamB)} {t.melds} {leftTeamId === myTeamId ? `(${t.you})` : ''}
                             </div>
-                            <div className="flex-1 flex flex-wrap content-start gap-2 overflow-visible min-h-[80px]">
+                            <div className="flex-1 flex flex-wrap content-start gap-2 max-md:gap-0.5 overflow-visible max-md:overflow-y-auto min-h-[80px] max-md:pr-1">
                                 {(leftTeam?.melds || []).map(meld => (
                                     <div key={meld.id}
                                         id={`meld-drop-${meld.id}`}
                                         data-meld-id={meld.id}
                                         onClick={() => isMyTurn && myPlayer?.teamId === leftTeamId && toggleMeldSelect(meld.id)}
                                         className={`relative group transition-all cursor-pointer md:hover:scale-105 ${selectedMeldId === meld.id ? 'z-30' : 'z-10'}`}>
-                                        <div className={`transition-all duration-200 scale-75 origin-top-left ${selectedMeldId === meld.id ? 'ring-4 ring-green-400 rounded-xl bg-white/10 shadow-[0_0_20px_rgba(74,222,128,0.4)]' : ''}`}>
-                                            <div className="flex -space-x-6 md:-space-x-7 p-1">
+                                        <div className={`transition-all duration-200 scale-100 origin-top-left ${selectedMeldId === meld.id ? 'ring-4 ring-green-400 rounded-xl bg-white/10 shadow-[0_0_20px_rgba(74,222,128,0.4)]' : ''}`}>
+                                            <div className={`flex ${isMobileViewport ? leftMeldOverlapClass : '-space-x-7'} p-1`}>
                                                 {meld.cards.map((c, idx) => (
                                                     <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
-                                                        <Card card={c} className="w-14 h-20 md:w-16 md:h-24 border border-black/20" />
+                                                        <Card card={c} className={`${isMobileViewport ? leftMeldCardClass : 'w-16 h-24'} border border-black/20`} />
                                                     </div>
                                                 ))}
                                             </div>
@@ -1004,18 +1033,29 @@ export function GameBoard() {
                                 }
                             }}>
                             {state.discardPile.length > 0 ? (
-                                <div className="relative h-[3.5rem] flex items-center cursor-pointer group active:scale-95 bg-slate-300/20 px-4 py-1 rounded-lg border border-white/20 backdrop-blur-sm shadow-xl">
-                                    <div className="flex -space-x-3">
-                                        {state.discardPile.slice(Math.max(0, state.discardPile.length - 8)).map((card) => (
-                                            <div key={card.id} className="relative">
-                                                <Card card={card} className="w-8 h-12 shadow-lg brightness-90 border border-black/30" />
+                                <div
+                                    className="relative h-[5.25rem] flex items-center cursor-pointer group active:scale-95 bg-slate-300/20 px-2 py-1 rounded-lg border border-white/20 backdrop-blur-sm shadow-xl"
+                                    style={isMobileViewport ? { width: `${mobileDiscardContainerPx}px` } : undefined}
+                                >
+                                    <div className="flex w-full py-0.5 justify-center overflow-hidden">
+                                        {state.discardPile.map((card, index) => (
+                                            <div key={card.id} className="relative flex-shrink-0" style={{ marginLeft: index === 0 ? 0 : -mobileDiscardOverlapPx }}>
+                                                <Card
+                                                    card={card}
+                                                    className="shadow-lg brightness-90 border border-black/30"
+                                                    disableLayout={true}
+                                                    style={{ width: `${Math.round(mobileDiscardCardWidthPx)}px`, height: `${mobileDiscardCardHeightPx}px` }}
+                                                />
                                             </div>
                                         ))}
                                     </div>
                                     <div className="absolute -top-4 left-0 w-full text-center font-bold text-white/80 uppercase text-[10px] tracking-widest">{t.discard}</div>
                                 </div>
                             ) : (
-                                <div className="w-[6rem] h-[3.5rem] bg-slate-300/10 border-2 border-dashed border-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                                <div
+                                    className="h-[5.25rem] bg-slate-300/10 border-2 border-dashed border-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm"
+                                    style={isMobileViewport ? { width: `${mobileDiscardContainerPx}px` } : undefined}
+                                >
                                     <span className="text-white/40 font-bold tracking-widest text-[8px] uppercase">{t.discardEmpty}</span>
                                 </div>
                             )}
@@ -1086,7 +1126,7 @@ export function GameBoard() {
                                     <div className="flex -space-x-8">
                                         {state.discardPile.slice(Math.max(0, state.discardPile.length - 8)).map((card) => (
                                             <div key={card.id} className="relative hover:-translate-y-4 transition-transform duration-200">
-                                                <Card card={card} className="w-16 h-24 lg:w-20 lg:h-28 shadow-lg brightness-90 border border-black/30" />
+                                                <Card card={card} className="w-16 h-24 lg:w-20 lg:h-28 shadow-lg brightness-90 border border-black/30" disableLayout={true} />
                                             </div>
                                         ))}
                                     </div>
@@ -1200,7 +1240,7 @@ export function GameBoard() {
                                 }
 
                                 return (
-                                    <div className="w-full flex justify-center max-md:justify-start max-md:overflow-x-auto max-md:pb-2 no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+                                    <div className="w-full flex justify-center max-md:justify-start max-md:overflow-x-auto max-md:overflow-y-visible max-md:pb-2 max-md:pt-1 no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
                                         <Reorder.Group axis="x" values={visibleHand} onReorder={(newOrder) => { if (peerId) actions.reorderHand(peerId, newOrder); }} className={`flex ${spacingClass} md:px-8 px-4 flex-nowrap`}>
                                             <AnimatePresence initial={false}>
                                                 {visibleHand.map((card, index) => (

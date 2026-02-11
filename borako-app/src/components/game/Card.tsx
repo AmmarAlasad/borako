@@ -66,7 +66,7 @@ export function Card({ card, isFaceDown, isSelected, onClick, className, style, 
             className={cn(
                 "relative w-24 h-36 bg-white rounded-lg shadow-md select-none cursor-pointer",
                 !disableHover && "transition-transform hover:scale-105",
-                isSelected && "ring-4 ring-green-400 -translate-y-4 shadow-xl z-10",
+                isSelected && "ring-green-400 shadow-xl md:ring-4 md:-translate-y-4 max-md:ring-2 max-md:-translate-y-1",
                 className
             )}
             onClick={onClick}
