@@ -247,3 +247,6 @@ If a round ends and a team **never took their Mour**:
 - Cards left in team hands: 20 (subtract)  
 ➡️ (200 + 100 + 50) − 20 = 330  
 ➡️ 330 ÷ 10 = **33** added to the team total.
+
+
+codex resume 019c4ee4-61d8-75f0-895b-5e4f256b7c3f

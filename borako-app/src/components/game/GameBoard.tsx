@@ -10,10 +10,11 @@ export function GameBoard() {
     const isHost = state.players.find(p => p.id === peerId)?.isHost;
     const [selectedCards, setSelectedCards] = useState<string[]>([]);
     const [selectedMeldId, setSelectedMeldId] = useState<string | null>(null);
-    const [lang, setLang] = useState<Language>('en'); // Language State
+    const [lang, setLang] = useState<Language>('ar'); // Language State
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [showSettings, setShowSettings] = useState(false);
     const [soundEnabled, setSoundEnabled] = useState(true);
+    const [meldSizeScale, setMeldSizeScale] = useState(1.08);
     const [showFirstTurnChoice, setShowFirstTurnChoice] = useState<{ cardId: string } | null>(null);
     const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024));
     const hasInitializedActionSoundRefs = useRef(false);
@@ -79,6 +80,21 @@ export function GameBoard() {
                                     {t.off}
                                 </button>
                             </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs uppercase text-slate-500 font-bold mb-3">
+                                {t.meldSize} ({Math.round(meldSizeScale * 100)}%)
+                            </label>
+                            <input
+                                type="range"
+                                min={1}
+                                max={1.25}
+                                step={0.01}
+                                value={meldSizeScale}
+                                onChange={(e) => setMeldSizeScale(Math.min(1.25, Math.max(1, Number(e.target.value) || 1)))}
+                                className="w-full accent-yellow-400"
+                            />
                         </div>
                     </div>
 
@@ -945,26 +961,29 @@ export function GameBoard() {
                     </div>
 
                     {/* CENTER COLUMN WRAPPER FOR MOBILE MELDS */}
-                    <div className="contents max-md:flex max-md:flex-col max-md:col-start-2 max-md:gap-2 max-md:w-full max-md:h-full max-md:min-h-0">
+                    <div className="contents max-md:flex max-md:flex-col max-md:col-start-2 max-md:gap-2 max-md:w-full max-md:h-full max-md:min-h-0 md:min-h-0">
 
                         {/* CENTER RIGHT/TOP: Enemy/Right Team Melds */}
                         <motion.div
                             initial={{ opacity: 1 }}
                             animate={{ opacity: isDealing ? 0 : 1 }}
                             transition={{ duration: 0.5 }}
-                            className="bg-black/20 rounded-r-2xl max-md:rounded-xl border-l max-md:border border-white/20 p-4 max-md:p-2 relative flex flex-col pl-6 max-md:pl-2 max-md:w-full max-md:flex-1 max-md:min-h-[200px] md:h-full"
+                            className="bg-black/20 rounded-r-2xl max-md:rounded-xl border-l max-md:border border-white/20 p-4 max-md:p-2 relative flex flex-col pl-6 max-md:pl-2 max-md:w-full max-md:flex-1 max-md:min-h-[200px] md:h-full md:min-h-0"
                         >
                             <div className={`text-xs font-black ${rightTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2 text-right max-md:text-left`}>
                                 {rightTeamId === 'A' ? (state.teams.A.name || t.teamA) : (state.teams.B.name || t.teamB)} {t.melds} {rightTeamId !== myTeamId ? `(${t.enemy})` : ''}
                             </div>
-                            <div className="flex-1 flex flex-wrap content-start gap-1 max-md:gap-0 justify-end max-md:justify-start overflow-y-auto overflow-x-hidden min-h-[80px] md:pr-1 max-md:pr-1">
+                            <div className="flex-1 flex flex-wrap content-start gap-1 max-md:gap-0 justify-end max-md:justify-start overflow-y-auto overflow-x-hidden min-h-[80px] md:min-h-0 md:pr-1 max-md:pr-1">
                                 {(rightTeam?.melds || []).map(meld => (
                                     <div key={meld.id}
                                         id={`meld-drop-${meld.id}`}
                                         data-meld-id={meld.id}
                                         onClick={() => isMyTurn && myPlayer?.teamId === rightTeamId && toggleMeldSelect(meld.id)}
                                         className={`relative group transition-all cursor-pointer md:hover:scale-105 ${selectedMeldId === meld.id ? 'z-30' : 'z-10'}`}>
-                                        <div className={`transition-all duration-200 scale-100 origin-top-left ${selectedMeldId === meld.id ? 'ring-4 ring-green-400 rounded-xl bg-white/10 shadow-[0_0_20px_rgba(74,222,128,0.4)]' : ''}`}>
+                                        <div
+                                            className={`transition-all duration-200 origin-top-left ${selectedMeldId === meld.id ? 'ring-4 ring-green-400 rounded-xl bg-white/10 shadow-[0_0_20px_rgba(74,222,128,0.4)]' : ''}`}
+                                            style={{ transform: `scale(${meldSizeScale})` }}
+                                        >
                                             <div className={`flex ${isMobileViewport ? rightMeldOverlapClass : rightDesktopMeldOverlapClass} p-1`}>
                                                 {meld.cards.map((c, idx) => (
                                                     <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
@@ -986,19 +1005,22 @@ export function GameBoard() {
                             initial={{ opacity: 1 }}
                             animate={{ opacity: isDealing ? 0 : 1 }}
                             transition={{ duration: 0.5 }}
-                            className="bg-black/20 rounded-l-2xl max-md:rounded-xl border-r max-md:border border-white/20 p-4 max-md:p-2 relative flex flex-col max-md:w-full max-md:flex-1 max-md:min-h-[200px] md:h-full"
+                            className="bg-black/20 rounded-l-2xl max-md:rounded-xl border-r max-md:border border-white/20 p-4 max-md:p-2 relative flex flex-col max-md:w-full max-md:flex-1 max-md:min-h-[200px] md:h-full md:min-h-0"
                         >
                             <div className={`text-xs font-black ${leftTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2`}>
                                 {leftTeamId === 'A' ? (state.teams.A.name || t.teamA) : (state.teams.B.name || t.teamB)} {t.melds} {leftTeamId === myTeamId ? `(${t.you})` : ''}
                             </div>
-                            <div className="flex-1 flex flex-wrap content-start gap-1 max-md:gap-0 overflow-y-auto overflow-x-hidden min-h-[80px] md:pr-1 max-md:pr-1">
+                            <div className="flex-1 flex flex-wrap content-start gap-1 max-md:gap-0 overflow-y-auto overflow-x-hidden min-h-[80px] md:min-h-0 md:pr-1 max-md:pr-1">
                                 {(leftTeam?.melds || []).map(meld => (
                                     <div key={meld.id}
                                         id={`meld-drop-${meld.id}`}
                                         data-meld-id={meld.id}
                                         onClick={() => isMyTurn && myPlayer?.teamId === leftTeamId && toggleMeldSelect(meld.id)}
                                         className={`relative group transition-all cursor-pointer md:hover:scale-105 ${selectedMeldId === meld.id ? 'z-30' : 'z-10'}`}>
-                                        <div className={`transition-all duration-200 scale-100 origin-top-left ${selectedMeldId === meld.id ? 'ring-4 ring-green-400 rounded-xl bg-white/10 shadow-[0_0_20px_rgba(74,222,128,0.4)]' : ''}`}>
+                                        <div
+                                            className={`transition-all duration-200 origin-top-left ${selectedMeldId === meld.id ? 'ring-4 ring-green-400 rounded-xl bg-white/10 shadow-[0_0_20px_rgba(74,222,128,0.4)]' : ''}`}
+                                            style={{ transform: `scale(${meldSizeScale})` }}
+                                        >
                                             <div className={`flex ${isMobileViewport ? leftMeldOverlapClass : leftDesktopMeldOverlapClass} p-1`}>
                                                 {meld.cards.map((c, idx) => (
                                                     <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
