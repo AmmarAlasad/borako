@@ -71,7 +71,7 @@ export function createGameDeck(): Card[] {
         suit: 'HEARTS', // Arbitrary
         rank: '2', // Arbitrary, but visually distinct
         isDevilJoker: true,
-        value: 0 // Default 0 for counting unless specified
+        value: 1
     };
 
     const joker2: Card = {
@@ -79,7 +79,7 @@ export function createGameDeck(): Card[] {
         suit: 'SPADES', // Arbitrary
         rank: '2', // Arbitrary
         isDevilJoker: true,
-        value: 0
+        value: 1
     };
 
     deck.push(joker1, joker2);

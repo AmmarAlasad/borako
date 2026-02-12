@@ -29,6 +29,22 @@ export function calculateMeldBonus(meld: Meld): number {
     return 0;
 }
 
+export function calculateTeamAdjustedMeldBonus(targetMeld: Meld, teamMelds: Meld[]): number {
+    const bonuses = teamMelds.map(calculateMeldBonus);
+    const hasTwoHundredOrMore = bonuses.some(b => b >= 200);
+    const targetBonus = calculateMeldBonus(targetMeld);
+
+    if (targetBonus === 100 && !hasTwoHundredOrMore) return 0;
+    return targetBonus;
+}
+
+export function calculateDisplayedMeldValue(targetMeld: Meld, teamMelds: Meld[]): number {
+    const adjustedBonus = calculateTeamAdjustedMeldBonus(targetMeld, teamMelds) / 10;
+    const cardValueSum = targetMeld.cards.reduce((sum, c) => sum + c.value, 0);
+    // UI currently expects a compact integer badge value.
+    return Math.round(adjustedBonus + cardValueSum);
+}
+
 export function calculateTeamRoundScore(
     melds: Meld[],
     handCards: Card[], // Cards remaining in hands of team players
@@ -39,36 +55,37 @@ export function calculateTeamRoundScore(
     let meldCardValues = 0;
     let handPenalty = 0;
 
-    // 1. Meld Bonuses
+    const baseMeldBonuses = melds.map(calculateMeldBonus);
+    const hasTwoHundredOrMore = baseMeldBonuses.some(b => b >= 200);
+    const effectiveMeldBonuses = baseMeldBonuses.map(b => (b === 100 && !hasTwoHundredOrMore ? 0 : b));
+    meldPoints = effectiveMeldBonuses.reduce((sum, b) => sum + b, 0);
+
     melds.forEach(m => {
-        meldPoints += calculateMeldBonus(m);
-        // 2. Cards inside Melds
         m.cards.forEach(c => meldCardValues += c.value);
     });
 
-    // 3. Hand Penalty
     handCards.forEach(c => handPenalty += c.value);
 
-    // 4. Mour Penalty
-    const mourPenalty = !hasTakenMour ? 100 : 0;
+    // Mour penalty is 10 final points if Mour was never taken.
+    const mourPenalty = !hasTakenMour ? 10 : 0;
 
-    // 5. Going Out Bonus
-    const goOutBonus = didGoOut ? 100 : 0;
+    // Preserve existing go-out bonus, but in final-point space.
+    const goOutBonus = didGoOut ? 10 : 0;
 
-    const rawScore = (meldPoints + meldCardValues + goOutBonus) - (handPenalty + mourPenalty);
-
-    // Divide by 10 (Borako Rule)
-    const finalScore = rawScore / 10;
+    // Only meld bonuses are divided by 10; card values already use final-point scale.
+    const meldPointsDivided = meldPoints / 10;
+    const finalScore = (meldPointsDivided + meldCardValues + goOutBonus) - (handPenalty + mourPenalty);
 
     return {
         totalPoints: finalScore,
         breakDown: {
             meldPoints,
+            meldPointsDivided,
             meldCardValues,
             handPenalty,
             mourPenalty,
             goOutBonus,
-            rawScore
+            effectiveMeldBonuses
         }
     };
 }

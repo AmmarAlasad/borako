@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, type CSSProperties } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { Card } from './Card';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import { calculateMeldBonus } from '../../engine/scoring';
+import { calculateDisplayedMeldValue } from '../../engine/scoring';
 import { translations, type Language } from '../../lib/translations';
 
 export function GameBoard() {
@@ -265,7 +265,13 @@ export function GameBoard() {
     if (state.phase === 'GAME_END') {
         const teamAScore = state.teams?.A?.totalScore ?? 0;
         const teamBScore = state.teams?.B?.totalScore ?? 0;
-        const winner = teamAScore >= 350 ? 'TEAM A' : 'TEAM B';
+        let winner = 'TEAM A';
+        if (teamAScore >= 350 && teamBScore >= 350) {
+            if (teamBScore > teamAScore) winner = 'TEAM B';
+            else if (teamBScore === teamAScore) winner = 'DRAW';
+        } else if (teamBScore >= 350) {
+            winner = 'TEAM B';
+        }
         return (
             <div className="flex flex-col items-center justify-center h-screen bg-slate-950 text-white relative overflow-hidden z-50">
                 <div className="text-center p-12 bg-slate-900 rounded-2xl shadow-2xl border border-yellow-500/30 animate-in zoom-in spin-in-3 duration-500">
@@ -966,8 +972,8 @@ export function GameBoard() {
                                                     </div>
                                                 ))}
                                             </div>
-                                            <div className="absolute -bottom-2 -right-2 bg-black/70 text-[10px] font-bold text-white px-2 py-0.5 rounded-full border border-white/20 shadow-lg">
-                                                {calculateMeldBonus(meld)}
+                                            <div className="absolute bottom-1 right-1 z-20 bg-black/70 text-[10px] font-bold text-white px-2 py-0.5 rounded-full border border-white/20 shadow-lg pointer-events-none">
+                                                {calculateDisplayedMeldValue(meld, rightTeam?.melds || [])}
                                             </div>
                                         </div>
                                     </div>
@@ -1000,8 +1006,8 @@ export function GameBoard() {
                                                     </div>
                                                 ))}
                                             </div>
-                                            <div className="absolute -bottom-2 -right-2 bg-black/70 text-[10px] font-bold text-white px-2 py-0.5 rounded-full border border-white/20 shadow-lg">
-                                                {calculateMeldBonus(meld)}
+                                            <div className="absolute bottom-1 right-1 z-20 bg-black/70 text-[10px] font-bold text-white px-2 py-0.5 rounded-full border border-white/20 shadow-lg pointer-events-none">
+                                                {calculateDisplayedMeldValue(meld, leftTeam?.melds || [])}
                                             </div>
                                         </div>
                                     </div>
