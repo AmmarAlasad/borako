@@ -19,6 +19,7 @@ export function GameBoard() {
     const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024));
     const hasInitializedActionSoundRefs = useRef(false);
     const previousActionSoundCounts = useRef({ discardCount: 0, meldCardCount: 0 });
+    const hasTriggeredLeaveOnUnloadRef = useRef(false);
 
     // Audio Refs
     const drawSound = useRef(new Audio('/sounds/card-draw.wav'));
@@ -98,7 +99,31 @@ export function GameBoard() {
                         </div>
                     </div>
 
-                    <div className="mt-8">
+                    <div className="mt-8 space-y-3">
+                        {isHost && state.players.length > 0 && (
+                            <button
+                                onClick={() => {
+                                    actions.resetGame();
+                                    setShowSettings(false);
+                                }}
+                                className="w-full bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 font-bold py-3 rounded-xl transition-all"
+                            >
+                                {t.resetWithSamePlayers}
+                            </button>
+                        )}
+
+                        {state.players.length > 0 && (
+                            <button
+                                onClick={() => {
+                                    actions.leaveGame();
+                                    setShowSettings(false);
+                                }}
+                                className="w-full bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-300 font-bold py-3 rounded-xl transition-all"
+                            >
+                                {t.leaveGame}
+                            </button>
+                        )}
+
                         <button
                             onClick={() => setShowSettings(false)}
                             className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl transition-all"
@@ -164,6 +189,33 @@ export function GameBoard() {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    // Warn before refresh/close while in an active game.
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const isActiveGame = state.phase === 'PLAYING' || state.phase === 'ROUND_END';
+        if (!isActiveGame) return;
+
+        hasTriggeredLeaveOnUnloadRef.current = false;
+
+        const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+            event.preventDefault();
+            event.returnValue = '';
+        };
+
+        const handleUnload = () => {
+            if (hasTriggeredLeaveOnUnloadRef.current) return;
+            hasTriggeredLeaveOnUnloadRef.current = true;
+            actions.leaveGame();
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        window.addEventListener('pagehide', handleUnload);
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            window.removeEventListener('pagehide', handleUnload);
+        };
+    }, [state.phase, actions]);
 
     // Play action sounds for all players (local + remote) based on state deltas.
     useEffect(() => {

@@ -5,11 +5,13 @@ export type Message =
     | { type: 'ACTION'; payload: any };
 
 type MessageCallback = (msg: Message) => void;
+type DisconnectCallback = (peerId: string) => void;
 
 class ConnectionManager {
     private peer: Peer | null = null;
     private connections: DataConnection[] = []; // For Host: list of clients. For Client: valid connection to host.
     private onMessage: MessageCallback | null = null;
+    private onDisconnect: DisconnectCallback | null = null;
     private myId: string = '';
 
     initialize(id?: string): Promise<string> {
@@ -86,11 +88,18 @@ class ConnectionManager {
         conn.on('close', () => {
             console.log("Connection closed:", conn.peer);
             this.connections = this.connections.filter(c => c !== conn);
+            if (this.onDisconnect) {
+                this.onDisconnect(conn.peer);
+            }
         });
     }
 
     setMessageHandler(callback: MessageCallback) {
         this.onMessage = callback;
+    }
+
+    setDisconnectHandler(callback: DisconnectCallback) {
+        this.onDisconnect = callback;
     }
 
     broadcast(msg: Message) {

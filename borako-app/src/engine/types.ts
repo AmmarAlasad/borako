@@ -63,6 +63,7 @@ export interface GameState {
 
     // Turn Management
     currentTurnPlayerId: string | null;
+    firstTurnStarterPlayerId: string | null; // Tracks who gets the round-opening special first-turn behavior
     turnPhase: TurnPhase;
     hasSwept: boolean; // Track if current player swept (forces meld)
     mustMeldAfterSweep: boolean; // Enforce meld requirement after sweep

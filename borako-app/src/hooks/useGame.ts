@@ -1,12 +1,97 @@
-import { useReducer, useMemo, useEffect, useState } from 'react';
+import { useReducer, useMemo, useEffect, useRef, useState } from 'react';
 import { gameReducer, INITIAL_STATE } from '../engine/reducer';
 import type { Card } from '../engine/types';
 import { connection, type Message } from '../network/connection';
 
+const SESSION_STORAGE_KEY = 'borako_session_v1';
+
+type PersistedSession = {
+    state: typeof INITIAL_STATE;
+    peerId: string | null;
+    isConnected: boolean;
+    hostId: string | null;
+};
+
+function loadPersistedSession(): PersistedSession | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as PersistedSession;
+        if (!parsed || !parsed.state) return null;
+        return parsed;
+    } catch {
+        return null;
+    }
+}
+
+function clearPersistedSession() {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+}
+
 export function useGame() {
-    const [state, dispatch] = useReducer(gameReducer, INITIAL_STATE);
-    const [peerId, setPeerId] = useState<string | null>(null);
-    const [isConnected, setIsConnected] = useState(false);
+    const restored = loadPersistedSession();
+    const [state, dispatch] = useReducer(gameReducer, restored?.state || INITIAL_STATE);
+    const [peerId, setPeerId] = useState<string | null>(restored?.peerId ?? null);
+    const [isConnected, setIsConnected] = useState(restored?.isConnected ?? false);
+    const [hostId, setHostId] = useState<string | null>(restored?.hostId ?? null);
+    const stateRef = useRef(state);
+    const peerIdRef = useRef(peerId);
+    const hostIdRef = useRef(hostId);
+
+    useEffect(() => {
+        stateRef.current = state;
+    }, [state]);
+
+    useEffect(() => {
+        peerIdRef.current = peerId;
+    }, [peerId]);
+
+    useEffect(() => {
+        hostIdRef.current = hostId;
+    }, [hostId]);
+
+    // Re-initialize networking on refresh so user can continue without rejoining manually.
+    useEffect(() => {
+        if (!peerId) return;
+        let cancelled = false;
+        const me = state.players.find(p => p.id === peerId);
+        const isRestoredHost = !!me?.isHost;
+
+        (async () => {
+            try {
+                await connection.initialize(peerId);
+                if (cancelled) return;
+
+                if (!isRestoredHost && hostId) {
+                    await connection.connect(hostId);
+                }
+                if (!cancelled) setIsConnected(true);
+            } catch {
+                // If reconnection fails, keep local session state visible and allow manual retry.
+                if (!cancelled) setIsConnected(false);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+        // Intentionally run once from restored values only.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Persist active session
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const payload: PersistedSession = {
+            state,
+            peerId,
+            isConnected,
+            hostId
+        };
+        window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(payload));
+    }, [state, peerId, isConnected, hostId]);
 
     // Networking Effect
     useEffect(() => {
@@ -16,15 +101,33 @@ export function useGame() {
                 dispatch({ type: 'SYNC_STATE', payload: msg.payload });
             } else if (msg.type === 'ACTION') {
                 // Only Host processes Actions
-                if (state.players.find(p => p.isHost)?.id === connection.getId()) {
+                if (stateRef.current.players.find(p => p.isHost)?.id === connection.getId()) {
                     dispatch(msg.payload);
                 }
             }
         });
 
-        // Cleanup?
-        // connection.destroy(); // Only on unmount usually.
-    }, [state]); // Re-attach when state changes? No, handler should be stable.
+        connection.setDisconnectHandler((disconnectedPeerId: string) => {
+            const me = peerIdRef.current;
+            const currentState = stateRef.current;
+            const isCurrentHost = currentState.players.find(p => p.isHost)?.id === me;
+
+            if (isCurrentHost) {
+                dispatch({ type: 'PLAYER_LEFT', payload: { playerId: disconnectedPeerId } });
+                return;
+            }
+
+            if (disconnectedPeerId === hostIdRef.current) {
+                clearPersistedSession();
+                setIsConnected(false);
+                setHostId(null);
+                dispatch({
+                    type: 'HOST_DISCONNECTED',
+                    payload: { message: 'Host left the game. Match was reset.' }
+                });
+            }
+        });
+    }, []);
 
     // Broadcast State Change (Host Only)
     useEffect(() => {
@@ -41,6 +144,7 @@ export function useGame() {
         initGame: async (hostName: string, teamNames?: { A: string, B: string }) => {
             const id = await connection.initialize();
             setPeerId(id);
+            setHostId(id);
             setIsConnected(true);
             dispatch({
                 type: 'INIT_GAME',
@@ -66,6 +170,7 @@ export function useGame() {
         joinGame: async (hostId: string, name: string) => {
             const myId = await connection.initialize();
             setPeerId(myId);
+            setHostId(hostId);
 
             await connection.connect(hostId);
             setIsConnected(true);
@@ -115,6 +220,33 @@ export function useGame() {
         },
         resetGame: () => {
             if (isHost()) dispatch({ type: 'RESET_GAME' });
+        },
+        leaveGame: () => {
+            const me = peerIdRef.current;
+            if (!me) return;
+
+            const currentState = stateRef.current;
+            const iAmHost = currentState.players.find(p => p.isHost)?.id === me;
+
+            if (iAmHost) {
+                const nextState = gameReducer(currentState, { type: 'PLAYER_LEFT', payload: { playerId: me } });
+                connection.broadcast({ type: 'STATE_UPDATE', payload: nextState });
+                dispatch({ type: 'SYNC_STATE', payload: nextState });
+            } else {
+                connection.sendToHost({
+                    type: 'ACTION',
+                    payload: { type: 'PLAYER_LEFT', payload: { playerId: me } }
+                });
+            }
+
+            clearPersistedSession();
+            setIsConnected(false);
+            setHostId(null);
+            connection.destroy();
+            dispatch({
+                type: 'HOST_DISCONNECTED',
+                payload: { message: 'You left the game.' }
+            });
         },
     }), [dispatch, peerId, state.players]);
 

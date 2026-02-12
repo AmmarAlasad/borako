@@ -17,6 +17,8 @@ export type GameAction =
     | { type: 'REORDER_HAND'; payload: { playerId: string; newOrder: Card[] } }
     | { type: 'KICK_PLAYER'; payload: { playerId: string } }
     | { type: 'SWITCH_TEAM'; payload: { playerId: string } }
+    | { type: 'PLAYER_LEFT'; payload: { playerId: string } }
+    | { type: 'HOST_DISCONNECTED'; payload?: { message?: string } }
     | { type: 'NEXT_ROUND' }
     | { type: 'RESET_GAME' }
     | { type: 'SYNC_STATE'; payload: GameState };
@@ -32,6 +34,7 @@ export const INITIAL_STATE: GameState = {
         B: { id: 'B', melds: [], mourPile: [], hasTakenMour: false, totalScore: 0, roundScore: 0 },
     },
     currentTurnPlayerId: null,
+    firstTurnStarterPlayerId: null,
     turnPhase: 'WAITING_FOR_DRAW',
     hasSwept: false,
     mustMeldAfterSweep: false,
@@ -133,6 +136,45 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             };
         }
 
+        case 'PLAYER_LEFT': {
+            const leavingPlayer = state.players.find(p => p.id === action.payload.playerId);
+            if (!leavingPlayer) return state;
+
+            const remainingPlayers = state.players.filter(p => p.id !== action.payload.playerId);
+
+            if (state.phase === 'LOBBY') {
+                const hasHost = remainingPlayers.some(p => p.isHost);
+                const normalizedPlayers = hasHost
+                    ? remainingPlayers
+                    : remainingPlayers.map((p, index) => ({ ...p, isHost: index === 0 }));
+
+                return {
+                    ...state,
+                    players: normalizedPlayers,
+                    logs: [...state.logs, `${leavingPlayer.name} left the lobby`]
+                };
+            }
+
+            const hasHost = remainingPlayers.some(p => p.isHost);
+            const normalizedPlayers = hasHost
+                ? remainingPlayers.map(p => ({ ...p, hand: [] }))
+                : remainingPlayers.map((p, index) => ({ ...p, hand: [], isHost: index === 0 }));
+
+            return {
+                ...INITIAL_STATE,
+                phase: 'LOBBY',
+                players: normalizedPlayers,
+                logs: [`${leavingPlayer.name} left the game. Match was reset for everyone.`]
+            };
+        }
+
+        case 'HOST_DISCONNECTED': {
+            return {
+                ...INITIAL_STATE,
+                logs: [action.payload?.message || 'Host disconnected. Match ended.']
+            };
+        }
+
         case 'START_GAME': {
             if (state.players.length < 1) return state; // Allow 1 player for debug
             // Setup Deck
@@ -165,6 +207,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             });
 
             const discardPile: Card[] = [];
+            const randomStarterIndex = Math.floor(Math.random() * players.length);
+            const randomStarterId = players[randomStarterIndex].id;
 
             return {
                 ...state,
@@ -176,7 +220,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                     A: { ...state.teams.A, mourPile: mourA },
                     B: { ...state.teams.B, mourPile: mourB }
                 },
-                currentTurnPlayerId: state.players[0].id,
+                currentTurnPlayerId: randomStarterId,
+                firstTurnStarterPlayerId: randomStarterId,
                 turnPhase: 'WAITING_FOR_DRAW',
                 hasSwept: false,
                 isFirstTurn: true,
@@ -561,6 +606,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
             const players = state.players.map(p => ({ ...p, hand: sortHand(newDeck.splice(0, 11)) })); // AUTO SORT
             const discardPile: Card[] = [];
+            const previousStarterId = state.firstTurnStarterPlayerId || state.currentTurnPlayerId || players[0]?.id || null;
+            const previousStarterIndex = previousStarterId ? players.findIndex(p => p.id === previousStarterId) : 0;
+            const nextStarterIndex = previousStarterIndex >= 0
+                ? (previousStarterIndex + 1) % players.length
+                : 0;
+            const nextStarterId = players[nextStarterIndex].id;
 
             return {
                 ...state,
@@ -573,23 +624,27 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                     A: { ...state.teams.A, melds: [], mourPile: mourA, hasTakenMour: false, roundScore: 0 },
                     B: { ...state.teams.B, melds: [], mourPile: mourB, hasTakenMour: false, roundScore: 0 }
                 },
-                currentTurnPlayerId: state.players[0].id, // Should rotate?
+                currentTurnPlayerId: nextStarterId,
+                firstTurnStarterPlayerId: nextStarterId,
                 turnPhase: 'WAITING_FOR_DRAW',
                 hasSwept: false,
+                isFirstTurn: true,
+                firstTurnDrawCount: 0,
                 logs: [...state.logs, `Round ${state.roundNumber + 1} Started!`]
             };
         }
 
         case 'RESET_GAME': {
-            const resetPlayers = state.players.map(p => ({ ...p, hand: [], isHost: p.isHost })); // Keep players
-            // Maybe actually re-run logic effectively
-            // Let's just reset stats and go back to Lobby?
-            // Or instant restart? 
-            // Usually "New Game" -> Lobby.
+            const resetPlayers = state.players.map(p => ({ ...p, hand: [] }));
             return {
                 ...INITIAL_STATE,
-                players: resetPlayers.map(p => ({ ...p, hand: [], teamId: p.teamId, isHost: p.isHost })), // Keep roster
-                phase: 'LOBBY'
+                players: resetPlayers,
+                teams: {
+                    A: { ...INITIAL_STATE.teams.A, name: state.teams.A.name || INITIAL_STATE.teams.A.name },
+                    B: { ...INITIAL_STATE.teams.B, name: state.teams.B.name || INITIAL_STATE.teams.B.name }
+                },
+                phase: 'LOBBY',
+                logs: [...state.logs, 'Game reset to lobby with same players']
             };
         }
 
@@ -625,4 +680,3 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             return state;
     }
 }
-
