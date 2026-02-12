@@ -827,7 +827,7 @@ export function GameBoard() {
                 </div>
 
                 {/* --- MIDDLE ROW: Enemies + Melds --- */}
-                <div className="grid md:grid-cols-[10%_40%_40%_10%] max-md:grid-cols-[auto_1fr_auto] max-md:grid-rows-[1fr] h-full w-full gap-3 max-md:gap-1 max-md:flex-1 max-md:min-h-0 md:overflow-visible md:items-stretch items-start max-md:items-center max-md:px-2">
+                <div className="grid md:grid-cols-[10%_40%_40%_10%] max-md:grid-cols-[2.5rem_1fr_2.5rem] max-md:grid-rows-[1fr] h-full w-full gap-3 max-md:gap-1 max-md:flex-1 max-md:min-h-0 md:overflow-visible md:items-stretch items-start max-md:items-center max-md:px-1">
 
                     {/* DEALING ANIMATION OVERLAY */}
                     <AnimatePresence>
@@ -910,7 +910,7 @@ export function GameBoard() {
 
 
                     {/* LEFT COLUMN: Enemy 1 (Left) */}
-                    <div className="flex items-start justify-center max-md:items-center max-md:mt-0 max-md:col-start-1 max-md:row-start-1 max-md:pt-0 max-md:-translate-y-9">
+                    <div className="flex items-start justify-center max-md:justify-start max-md:items-center max-md:mt-0 max-md:col-start-1 max-md:row-start-1 max-md:pt-0 max-md:-translate-y-9">
                         {enemyLeft && (
                             <div className={`flex flex-col items-center gap-1 transition-all duration-300 ${enemyLeft.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
                                 {/* Name Badge Above */}
@@ -924,7 +924,7 @@ export function GameBoard() {
                                     <div className="relative w-full h-full flex flex-col items-center">
                                         {Array.from({ length: enemyLeft ? getVisibleCardCount(enemyLeft.id, enemyLeft.hand.length) : 0 }).map((_, i) => (
                                             <div key={i} className="absolute left-0 w-full flex justify-center md:hover:translate-x-2 transition-transform" style={{ top: `${i * (typeof window !== 'undefined' && window.innerWidth < 768 ? 25 : 15)}px`, height: '40px' }}>
-                                                <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-16 shadow-md max-md:rotate-90 max-md:origin-center max-md:w-12 max-md:h-16" />
+                                                <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-16 shadow-md max-md:rotate-90 max-md:origin-center max-md:w-12 max-md:h-16 max-md:-translate-x-6" />
                                             </div>
                                         ))}
                                         {/* Spacer for flow if needed */}
@@ -1012,7 +1012,7 @@ export function GameBoard() {
                     </div>
 
                     {/* RIGHT COLUMN: Enemy 2 (Right) */}
-                    <div className="flex items-start justify-center max-md:items-center max-md:mt-0 max-md:col-start-3 max-md:row-start-1 max-md:pt-0 max-md:-translate-y-9">
+                    <div className="flex items-start justify-center max-md:justify-end max-md:items-center max-md:mt-0 max-md:col-start-3 max-md:row-start-1 max-md:pt-0 max-md:-translate-y-9">
                         {enemyRight && (
                             <div className={`flex flex-col items-center gap-1 transition-all duration-300 ${enemyRight.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
                                 {/* Name Badge Above */}
@@ -1026,7 +1026,7 @@ export function GameBoard() {
                                     <div className="relative w-full h-full flex flex-col items-center">
                                         {Array.from({ length: enemyRight ? getVisibleCardCount(enemyRight.id, enemyRight.hand.length) : 0 }).map((_, i) => (
                                             <div key={i} className="absolute right-0 w-full flex justify-center md:hover:-translate-x-2 transition-transform" style={{ top: `${i * (typeof window !== 'undefined' && window.innerWidth < 768 ? 25 : 15)}px`, height: '40px' }}>
-                                                <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-16 shadow-md max-md:rotate-90 max-md:origin-center max-md:w-12 max-md:h-16" />
+                                                <Card isFaceDown deckColor={i % 2 === 0 ? 'red' : 'blue'} className="w-full h-16 shadow-md max-md:rotate-90 max-md:origin-center max-md:w-12 max-md:h-16 max-md:translate-x-6" />
                                             </div>
                                         ))}
                                         {/* Spacer for flow if needed */}
