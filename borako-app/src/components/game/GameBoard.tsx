@@ -16,6 +16,8 @@ export function GameBoard() {
     const [soundEnabled, setSoundEnabled] = useState(true);
     const [showFirstTurnChoice, setShowFirstTurnChoice] = useState<{ cardId: string } | null>(null);
     const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024));
+    const hasInitializedActionSoundRefs = useRef(false);
+    const previousActionSoundCounts = useRef({ discardCount: 0, meldCardCount: 0 });
 
     // Audio Refs
     const drawSound = useRef(new Audio('/sounds/card-draw.wav'));
@@ -146,6 +148,29 @@ export function GameBoard() {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    // Play action sounds for all players (local + remote) based on state deltas.
+    useEffect(() => {
+        const discardCount = state.discardPile.length;
+        const meldCardCount =
+            (state.teams.A.melds || []).reduce((sum, meld) => sum + meld.cards.length, 0) +
+            (state.teams.B.melds || []).reduce((sum, meld) => sum + meld.cards.length, 0);
+
+        if (!hasInitializedActionSoundRefs.current) {
+            hasInitializedActionSoundRefs.current = true;
+            previousActionSoundCounts.current = { discardCount, meldCardCount };
+            return;
+        }
+
+        if (discardCount > previousActionSoundCounts.current.discardCount) {
+            playSound(discardSound);
+        }
+        if (meldCardCount > previousActionSoundCounts.current.meldCardCount) {
+            playSound(drawSound);
+        }
+
+        previousActionSoundCounts.current = { discardCount, meldCardCount };
+    }, [state.discardPile.length, state.teams.A.melds, state.teams.B.melds]);
 
     // Helper to calculate how many cards should be visible in a player's hand during dealing
     const getVisibleCardCount = (targetPlayerId: string, totalHandSize: number) => {
@@ -604,30 +629,47 @@ export function GameBoard() {
     const moursRemaining = 2 - (state.teams.A.hasTakenMour ? 1 : 0) - (state.teams.B.hasTakenMour ? 1 : 0);
     const isMobileViewport = viewportWidth < 768;
     const getMobileMeldCardClass = (meldCount: number) => {
-        if (meldCount >= 10) return 'w-9 h-[3.25rem]';
-        if (meldCount >= 8) return 'w-10 h-14';
-        if (meldCount >= 6) return 'w-10 h-[3.75rem]';
-        return 'w-11 h-16';
+        if (meldCount >= 10) return 'w-11 h-[3.9rem]';
+        if (meldCount >= 8) return 'w-12 h-[4.35rem]';
+        if (meldCount >= 6) return 'w-12 h-[4.6rem]';
+        return 'w-14 h-20';
     };
     const getMobileMeldOverlapClass = (meldCount: number) => {
-        if (meldCount >= 8) return '-space-x-[0.875rem]';
-        if (meldCount >= 6) return '-space-x-4';
-        return '-space-x-[1.125rem]';
+        if (meldCount >= 10) return '-space-x-[2.05rem]';
+        if (meldCount >= 8) return '-space-x-[2.25rem]';
+        if (meldCount >= 6) return '-space-x-[2.25rem]';
+        return '-space-x-[2.55rem]';
+    };
+    const getDesktopMeldCardClass = (meldCount: number) => {
+        if (meldCount >= 10) return 'w-14 h-20';
+        if (meldCount >= 8) return 'w-16 h-24';
+        if (meldCount >= 6) return 'w-20 h-[7.5rem]';
+        return 'w-24 h-36';
+    };
+    const getDesktopMeldOverlapClass = (meldCount: number) => {
+        if (meldCount >= 10) return '-space-x-8';
+        if (meldCount >= 8) return '-space-x-10';
+        if (meldCount >= 6) return '-space-x-12';
+        return '-space-x-16';
     };
     const rightMeldCardClass = getMobileMeldCardClass(rightTeam?.melds?.length || 0);
     const leftMeldCardClass = getMobileMeldCardClass(leftTeam?.melds?.length || 0);
     const rightMeldOverlapClass = getMobileMeldOverlapClass(rightTeam?.melds?.length || 0);
     const leftMeldOverlapClass = getMobileMeldOverlapClass(leftTeam?.melds?.length || 0);
+    const rightDesktopMeldCardClass = getDesktopMeldCardClass(rightTeam?.melds?.length || 0);
+    const leftDesktopMeldCardClass = getDesktopMeldCardClass(leftTeam?.melds?.length || 0);
+    const rightDesktopMeldOverlapClass = getDesktopMeldOverlapClass(rightTeam?.melds?.length || 0);
+    const leftDesktopMeldOverlapClass = getDesktopMeldOverlapClass(leftTeam?.melds?.length || 0);
     const mobileDiscardCount = state.discardPile.length;
     const mobileDiscardContainerPx = isMobileViewport
-        ? Math.max(96, Math.floor((viewportWidth - 32) / 3))
+        ? Math.max(132, Math.floor((viewportWidth - 24) * 0.56))
         : 224;
     const mobileDiscardInnerPx = Math.max(72, mobileDiscardContainerPx - 16); // px-2 left + right
-    const mobileDiscardOverlapRatio = 0.72;
+    const mobileDiscardOverlapRatio = 0.79;
     const mobileDiscardStepRatio = 1 - mobileDiscardOverlapRatio;
     const mobileDiscardDenom = 1 + Math.max(0, mobileDiscardCount - 1) * mobileDiscardStepRatio;
     const mobileDiscardCardWidthPx = mobileDiscardCount > 0
-        ? Math.max(10, Math.min(42, mobileDiscardInnerPx / Math.max(1, mobileDiscardDenom)))
+        ? Math.max(16, Math.min(84, mobileDiscardInnerPx / Math.max(1, mobileDiscardDenom)))
         : 0;
     const mobileDiscardCardHeightPx = Math.round(mobileDiscardCardWidthPx * 1.43);
     const mobileDiscardOverlapPx = Math.round(mobileDiscardCardWidthPx * mobileDiscardOverlapRatio);
@@ -679,7 +721,6 @@ export function GameBoard() {
                 return;
             }
 
-            playSound(discardSound);
             actions.discardCard(peerId, cardId);
             setSelectedCards([]);
         }
@@ -693,7 +734,6 @@ export function GameBoard() {
                 return;
             }
 
-            playSound(discardSound);
             actions.discardCard(peerId, showFirstTurnChoice.cardId, endTurn);
             setShowFirstTurnChoice(null);
             setSelectedCards([]);
@@ -730,7 +770,7 @@ export function GameBoard() {
             <div className="relative z-10 w-full h-full grid md:grid-rows-[15%_55%_30%] max-md:flex max-md:flex-col p-4 max-md:p-0 gap-4 max-md:gap-0">
 
                 {/* --- TOP ROW: Teammate + Score --- */}
-                <div className="relative flex md:justify-center md:items-start max-md:flex-col max-md:justify-center max-md:items-center w-full max-md:h-auto max-md:py-2 max-md:flex-none z-50 px-2 max-md:bg-black/20 max-md:gap-2">
+                <div className="relative flex md:justify-center md:items-start max-md:flex-col max-md:justify-center max-md:items-center w-full max-md:h-auto max-md:py-1 max-md:flex-none z-50 px-2 max-md:bg-black/20 max-md:gap-1">
 
                     {/* Teammate (Compact Top Left on Mobile, Center Top on Desktop) */}
                     {teammate ? (
@@ -742,7 +782,7 @@ export function GameBoard() {
                                 </span>
                             </div>
 
-                            <div className="relative flex items-center h-10 md:h-20">
+                            <div className="relative flex items-center h-10 md:h-20 max-md:order-2">
                                 {/* Compact Card Row - Evenly Spaced */}
                                 <div className="flex -space-x-4 max-md:-space-x-3 items-center md:-space-x-6">
                                     {Array.from({ length: teammate ? getVisibleCardCount(teammate.id, teammate.hand.length) : 0 }).map((_, i) => (
@@ -755,14 +795,20 @@ export function GameBoard() {
                             </div>
 
                             {/* Mobile Name (Side) */}
-                            <span className={`text-xs font-bold whitespace-nowrap md:hidden ${teammate.id === state.currentTurnPlayerId ? 'text-yellow-400' : 'text-blue-100'}`}>
+                            <span className={`text-xs font-bold whitespace-nowrap md:hidden max-md:order-1 ${teammate.id === state.currentTurnPlayerId ? 'text-yellow-400' : 'text-blue-100'}`}>
                                 {teammate.name.substring(0, 8).toUpperCase()}
                             </span>
                         </div>
                     ) : <div></div>}
 
+                    <div className="absolute top-2 right-2 z-[60] md:hidden bg-black/50 px-2 py-0.5 rounded-md border border-white/15">
+                        <span className="text-[11px] font-bold text-white/85 tracking-wide">
+                            {state.teams.A.totalScore}/{state.teams.B.totalScore}
+                        </span>
+                    </div>
+
                     {/* Score Board (Compact Top Right on Mobile, Center Overlay on Desktop) */}
-                    <div className="bg-black/60 px-3 py-1 rounded-lg border border-white/20 backdrop-blur-md md:absolute md:top-0 md:right-0 md:px-6 md:py-3 md:rounded-xl md:bg-black/60 max-md:order-1">
+                    <div className="hidden md:block bg-black/60 px-3 py-1 rounded-lg border border-white/20 backdrop-blur-md md:absolute md:top-0 md:right-0 md:px-6 md:py-3 md:rounded-xl md:bg-black/60">
                         <div className="flex gap-3 text-xs font-black tracking-wider md:gap-8 md:text-base">
                             <div className="text-blue-400 flex items-center gap-1 md:flex-col md:leading-none">
                                 <span>{state.teams.A.name || (typeof window !== 'undefined' && window.innerWidth > 768 ? t.teamA : 'A')}</span>
@@ -781,7 +827,7 @@ export function GameBoard() {
                 </div>
 
                 {/* --- MIDDLE ROW: Enemies + Melds --- */}
-                <div className="grid md:grid-cols-[10%_40%_40%_10%] max-md:grid-cols-[auto_1fr_auto] max-md:grid-rows-[1fr] h-full w-full gap-3 max-md:gap-1 max-md:flex-1 max-md:min-h-0 md:overflow-visible md:items-stretch items-start max-md:px-2">
+                <div className="grid md:grid-cols-[10%_40%_40%_10%] max-md:grid-cols-[auto_1fr_auto] max-md:grid-rows-[1fr] h-full w-full gap-3 max-md:gap-1 max-md:flex-1 max-md:min-h-0 md:overflow-visible md:items-stretch items-start max-md:items-center max-md:px-2">
 
                     {/* DEALING ANIMATION OVERLAY */}
                     <AnimatePresence>
@@ -864,7 +910,7 @@ export function GameBoard() {
 
 
                     {/* LEFT COLUMN: Enemy 1 (Left) */}
-                    <div className="flex items-start justify-center max-md:mt-0 max-md:col-start-1 max-md:row-start-1 max-md:pt-2">
+                    <div className="flex items-start justify-center max-md:items-center max-md:mt-0 max-md:col-start-1 max-md:row-start-1 max-md:pt-0 max-md:-translate-y-9">
                         {enemyLeft && (
                             <div className={`flex flex-col items-center gap-1 transition-all duration-300 ${enemyLeft.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
                                 {/* Name Badge Above */}
@@ -905,7 +951,7 @@ export function GameBoard() {
                             <div className={`text-xs font-black ${rightTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2 text-right max-md:text-left`}>
                                 {rightTeamId === 'A' ? (state.teams.A.name || t.teamA) : (state.teams.B.name || t.teamB)} {t.melds} {rightTeamId !== myTeamId ? `(${t.enemy})` : ''}
                             </div>
-                            <div className="flex-1 flex flex-wrap content-start gap-2 max-md:gap-0.5 justify-end max-md:justify-start overflow-visible max-md:overflow-y-auto min-h-[80px] max-md:pr-1">
+                            <div className="flex-1 flex flex-wrap content-start gap-1 max-md:gap-0 justify-end max-md:justify-start overflow-y-auto overflow-x-hidden min-h-[80px] md:pr-1 max-md:pr-1">
                                 {(rightTeam?.melds || []).map(meld => (
                                     <div key={meld.id}
                                         id={`meld-drop-${meld.id}`}
@@ -913,10 +959,10 @@ export function GameBoard() {
                                         onClick={() => isMyTurn && myPlayer?.teamId === rightTeamId && toggleMeldSelect(meld.id)}
                                         className={`relative group transition-all cursor-pointer md:hover:scale-105 ${selectedMeldId === meld.id ? 'z-30' : 'z-10'}`}>
                                         <div className={`transition-all duration-200 scale-100 origin-top-left ${selectedMeldId === meld.id ? 'ring-4 ring-green-400 rounded-xl bg-white/10 shadow-[0_0_20px_rgba(74,222,128,0.4)]' : ''}`}>
-                                            <div className={`flex ${isMobileViewport ? rightMeldOverlapClass : '-space-x-7'} p-1`}>
+                                            <div className={`flex ${isMobileViewport ? rightMeldOverlapClass : rightDesktopMeldOverlapClass} p-1`}>
                                                 {meld.cards.map((c, idx) => (
                                                     <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
-                                                        <Card card={c} className={`${isMobileViewport ? rightMeldCardClass : 'w-16 h-24'} border border-black/20`} />
+                                                        <Card card={c} className={`${isMobileViewport ? rightMeldCardClass : rightDesktopMeldCardClass} border border-black/20`} />
                                                     </div>
                                                 ))}
                                             </div>
@@ -939,7 +985,7 @@ export function GameBoard() {
                             <div className={`text-xs font-black ${leftTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2`}>
                                 {leftTeamId === 'A' ? (state.teams.A.name || t.teamA) : (state.teams.B.name || t.teamB)} {t.melds} {leftTeamId === myTeamId ? `(${t.you})` : ''}
                             </div>
-                            <div className="flex-1 flex flex-wrap content-start gap-2 max-md:gap-0.5 overflow-visible max-md:overflow-y-auto min-h-[80px] max-md:pr-1">
+                            <div className="flex-1 flex flex-wrap content-start gap-1 max-md:gap-0 overflow-y-auto overflow-x-hidden min-h-[80px] md:pr-1 max-md:pr-1">
                                 {(leftTeam?.melds || []).map(meld => (
                                     <div key={meld.id}
                                         id={`meld-drop-${meld.id}`}
@@ -947,10 +993,10 @@ export function GameBoard() {
                                         onClick={() => isMyTurn && myPlayer?.teamId === leftTeamId && toggleMeldSelect(meld.id)}
                                         className={`relative group transition-all cursor-pointer md:hover:scale-105 ${selectedMeldId === meld.id ? 'z-30' : 'z-10'}`}>
                                         <div className={`transition-all duration-200 scale-100 origin-top-left ${selectedMeldId === meld.id ? 'ring-4 ring-green-400 rounded-xl bg-white/10 shadow-[0_0_20px_rgba(74,222,128,0.4)]' : ''}`}>
-                                            <div className={`flex ${isMobileViewport ? leftMeldOverlapClass : '-space-x-7'} p-1`}>
+                                            <div className={`flex ${isMobileViewport ? leftMeldOverlapClass : leftDesktopMeldOverlapClass} p-1`}>
                                                 {meld.cards.map((c, idx) => (
                                                     <div key={c.id} className="relative shadow-md" style={{ zIndex: idx }}>
-                                                        <Card card={c} className={`${isMobileViewport ? leftMeldCardClass : 'w-16 h-24'} border border-black/20`} />
+                                                        <Card card={c} className={`${isMobileViewport ? leftMeldCardClass : leftDesktopMeldCardClass} border border-black/20`} />
                                                     </div>
                                                 ))}
                                             </div>
@@ -966,7 +1012,7 @@ export function GameBoard() {
                     </div>
 
                     {/* RIGHT COLUMN: Enemy 2 (Right) */}
-                    <div className="flex items-start justify-center max-md:mt-0 max-md:col-start-3 max-md:row-start-1 max-md:pt-2">
+                    <div className="flex items-start justify-center max-md:items-center max-md:mt-0 max-md:col-start-3 max-md:row-start-1 max-md:pt-0 max-md:-translate-y-9">
                         {enemyRight && (
                             <div className={`flex flex-col items-center gap-1 transition-all duration-300 ${enemyRight.id === state.currentTurnPlayerId ? 'scale-110 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]' : ''}`}>
                                 {/* Name Badge Above */}
@@ -999,9 +1045,9 @@ export function GameBoard() {
                 <div className="grid grid-cols-[12%_76%_12%] max-md:flex max-md:flex-col pt-2 max-md:pt-0 max-md:flex-none z-20 max-md:bg-gradient-to-t max-md:from-black/40 max-md:to-transparent gap-2 max-md:px-2">
 
                     {/* MOBILE ONLY: Control Row (Deck | Discard | Mour) */}
-                    <div className="hidden max-md:grid max-md:grid-cols-3 max-md:w-full max-md:items-center max-md:gap-2">
+                    <div className="hidden max-md:grid max-md:grid-cols-[22%_56%_22%] max-md:w-full max-md:items-center max-md:gap-2 max-md:-mb-7 max-md:relative max-md:z-10">
                         {/* Deck Position */}
-                        <div className="flex justify-start">
+                        <div className="flex justify-start max-md:-translate-y-10">
                             {!isDealing && (
                                 <motion.div
                                     layoutId="deck-container-mobile"
@@ -1025,7 +1071,7 @@ export function GameBoard() {
                         </div>
 
                         {/* Discard Position */}
-                        <div className="flex justify-center items-center h-full"
+                        <div className="flex justify-center items-center h-full max-md:h-[5.25rem] max-md:items-start max-md:overflow-hidden"
                             onClick={() => {
                                 if (isMyTurn && state.turnPhase === 'WAITING_FOR_DRAW' && peerId && state.discardPile.length > 0) {
                                     playSound(drawSound);
@@ -1034,7 +1080,7 @@ export function GameBoard() {
                             }}>
                             {state.discardPile.length > 0 ? (
                                 <div
-                                    className="relative h-[5.25rem] flex items-center cursor-pointer group active:scale-95 bg-slate-300/20 px-2 py-1 rounded-lg border border-white/20 backdrop-blur-sm shadow-xl"
+                                    className="relative h-[7.75rem] flex items-center cursor-pointer group active:scale-95 bg-slate-300/20 px-2 py-1 rounded-lg border border-white/20 backdrop-blur-sm shadow-xl"
                                     style={isMobileViewport ? { width: `${mobileDiscardContainerPx}px` } : undefined}
                                 >
                                     <div className="flex w-full py-0.5 justify-center overflow-hidden">
@@ -1053,7 +1099,7 @@ export function GameBoard() {
                                 </div>
                             ) : (
                                 <div
-                                    className="h-[5.25rem] bg-slate-300/10 border-2 border-dashed border-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm"
+                                    className="h-[7.75rem] bg-slate-300/10 border-2 border-dashed border-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm"
                                     style={isMobileViewport ? { width: `${mobileDiscardContainerPx}px` } : undefined}
                                 >
                                     <span className="text-white/40 font-bold tracking-widest text-[8px] uppercase">{t.discardEmpty}</span>
@@ -1062,7 +1108,7 @@ export function GameBoard() {
                         </div>
 
                         {/* Mour Position */}
-                        <div className="flex justify-end items-center">
+                        <div className="flex justify-end items-center max-md:-translate-y-10">
                             <div className="relative w-14 h-14 flex items-center justify-center">
                                 {moursRemaining > 0 && (
                                     <div className="absolute z-0">
@@ -1195,7 +1241,7 @@ export function GameBoard() {
                             </AnimatePresence>
 
                             {/* PLAYER NAME / TURN INDICATOR */}
-                            <div className={`absolute -top-8 left-1/2 -translate-x-1/2 flex flex-col items-center z-30`}>
+                            <div className={`hidden absolute -top-8 left-1/2 -translate-x-1/2 flex flex-col items-center z-30 max-md:hidden`}>
                                 <div className={`px-2 py-0 rounded-full backdrop-blur-sm border transition-all ${isMyTurn ? 'bg-yellow-500/20 border-yellow-500' : 'bg-black/40 border-white/5'}`}>
                                     <span className={`font-bold tracking-wider text-[9px] uppercase ${isMyTurn ? 'text-yellow-400' : 'text-white/40'}`}>
                                         {t.you} • {myPlayer?.name.toUpperCase()}
@@ -1214,10 +1260,11 @@ export function GameBoard() {
                                 let spacingClass = "-space-x-12";
                                 let cardStyle: CSSProperties | undefined;
                                 let overlapPx = 0;
+                                let mobileHandVisibleHeightPx: number | undefined;
 
                                 // Mobile: fit hand to current viewport width
                                 if (isMobile) {
-                                    const horizontalPadding = 32; // px-4 left + right
+                                    const horizontalPadding = 16; // include small border/safe gutter
                                     const maxCardWidth = 112; // keep cards readable on phones
                                     const overlapRatio = cardCount > 18 ? 0.75 : cardCount > 14 ? 0.72 : 0.7;
                                     const stepRatio = 1 - overlapRatio;
@@ -1229,6 +1276,7 @@ export function GameBoard() {
                                     overlapPx = Math.round(cardWidthPx * overlapRatio);
                                     cardStyle = { width: `${Math.round(cardWidthPx)}px`, height: `${cardHeightPx}px` };
                                     spacingClass = "";
+                                    mobileHandVisibleHeightPx = Math.round(cardHeightPx * 0.67) + 14;
                                 } else if (cardCount > 18) {
                                     cardWidth = "w-20";
                                     cardHeight = "h-32";
@@ -1240,8 +1288,19 @@ export function GameBoard() {
                                 }
 
                                 return (
-                                    <div className="w-full flex justify-center max-md:justify-start max-md:overflow-x-auto max-md:overflow-y-visible max-md:pb-2 max-md:pt-1 no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
-                                        <Reorder.Group axis="x" values={visibleHand} onReorder={(newOrder) => { if (peerId) actions.reorderHand(peerId, newOrder); }} className={`flex ${spacingClass} md:px-8 px-4 flex-nowrap`}>
+                                    <div
+                                        className="w-full flex justify-center max-md:overflow-x-hidden max-md:overflow-y-hidden max-md:pb-1 max-md:pt-1 no-scrollbar max-md:relative max-md:z-20"
+                                        style={{
+                                            WebkitOverflowScrolling: 'touch',
+                                            ...(isMobile && mobileHandVisibleHeightPx ? { height: `${mobileHandVisibleHeightPx}px` } : {})
+                                        }}
+                                    >
+                                        <Reorder.Group
+                                            axis="x"
+                                            values={visibleHand}
+                                            onReorder={(newOrder) => { if (peerId) actions.reorderHand(peerId, newOrder); }}
+                                            className={`flex ${spacingClass} flex-nowrap rounded-lg border ${isMyTurn && selectedCards.length === 0 ? 'border-yellow-200 shadow-[0_0_32px_rgba(250,204,21,0.72)]' : 'border-white/10'}`}
+                                        >
                                             <AnimatePresence initial={false}>
                                                 {visibleHand.map((card, index) => (
                                                     <Reorder.Item key={card.id} value={card}
@@ -1252,10 +1311,12 @@ export function GameBoard() {
                                                             x: 0,
                                                             y: 0,
                                                             rotate: 0,
-                                                            zIndex: 50,
                                                             transition: { type: "spring", stiffness: 90, damping: 22 }
                                                         }}
-                                                        style={isMobile && overlapPx > 0 ? { marginLeft: index === 0 ? 0 : -overlapPx } : undefined}
+                                                        style={{
+                                                            ...(isMobile && overlapPx > 0 ? { marginLeft: index === 0 ? 2 : -overlapPx } : {}),
+                                                            zIndex: index + 1
+                                                        }}
                                                         onAnimationComplete={() => { }}
                                                         whileDrag={{ scale: 1.1, zIndex: 100, boxShadow: "0px 10px 20px rgba(0,0,0,0.5)" }}
                                                         onDragEnd={(_event, info) => {
