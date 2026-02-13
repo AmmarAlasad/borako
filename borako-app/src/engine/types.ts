@@ -74,6 +74,9 @@ export interface GameState {
     firstTurnDrawCount: number;
     lastDrawnCardId?: string;
 
+    // Settings
+    autoSortHand: boolean;
+
     // Messages/Logs
     logs: string[];
 }

@@ -1,8 +1,8 @@
 
 import type { GameState, Card, Meld } from './types';
-import { createGameDeck } from './deck';
+import { createGameDeck, sortHand } from './deck';
 import { validateMeld } from './validator';
-import { calculateTeamRoundScore } from './scoring';
+import { calculateTeamRoundScore, calculateMeldBonus } from './scoring';
 import { v4 as uuidv4 } from 'uuid';
 
 export type GameAction =
@@ -21,6 +21,7 @@ export type GameAction =
     | { type: 'HOST_DISCONNECTED'; payload?: { message?: string } }
     | { type: 'NEXT_ROUND' }
     | { type: 'RESET_GAME' }
+    | { type: 'TOGGLE_AUTO_SORT' }
     | { type: 'SYNC_STATE'; payload: GameState };
 
 export const INITIAL_STATE: GameState = {
@@ -41,29 +42,59 @@ export const INITIAL_STATE: GameState = {
     sweptCards: [],
     isFirstTurn: false,
     firstTurnDrawCount: 0,
+    autoSortHand: true,
     logs: [],
 };
 
 // Helper to auto-sort hand: Suit (Clubs, Diamonds, Spades, Hearts) -> Rank (A, K..2)
-function sortHand(cards: Card[]): Card[] {
-    const suitOrder: Record<string, number> = { 'CLUBS': 0, 'DIAMONDS': 1, 'SPADES': 2, 'HEARTS': 3 };
-    const rankOrder: Record<string, number> = {
-        'A': 14, 'K': 13, 'Q': 12, 'J': 11, '10': 10, '9': 9, '8': 8, '7': 7, '6': 6, '5': 5, '4': 4, '3': 3, '2': 2
+// (Removed local sortHand, now imported from deck.ts)
+
+function checkGoOutRequirements(team: any): boolean {
+    if (!team.hasTakenMour) return false;
+    const meldBonuses = team.melds.map((m: any) => calculateMeldBonus(m));
+    const hasTwentyMeld = meldBonuses.some((b: number) => b >= 200);
+    const hasTenMeld = meldBonuses.filter((b: number) => b >= 100).length >= 2;
+    return hasTwentyMeld && hasTenMeld;
+}
+
+function triggerRoundEnd(state: GameState, finisherId: string, isGoOut: boolean): GameState {
+    const nextState = { ...state };
+    const player = nextState.players.find(p => p.id === finisherId)!;
+    const teamA = nextState.teams.A;
+    const teamB = nextState.teams.B;
+
+    if (!isGoOut) {
+        nextState.logs = [...nextState.logs, "Deck is empty! Round ending."];
+    } else {
+        nextState.logs = [...nextState.logs, `${player.name} went out!`];
+    }
+
+    // Cards remaining in Hands for penalty
+    const handCardsA = nextState.players.filter(p => p.teamId === 'A').flatMap(p => p.hand);
+    const handCardsB = nextState.players.filter(p => p.teamId === 'B').flatMap(p => p.hand);
+
+    // Calculate Scores
+    const resultA = calculateTeamRoundScore(teamA.melds, handCardsA, teamA.hasTakenMour, isGoOut && player.teamId === 'A');
+    const resultB = calculateTeamRoundScore(teamB.melds, handCardsB, teamB.hasTakenMour, isGoOut && player.teamId === 'B');
+
+    // Update Total Scores
+    const newTotalA = teamA.totalScore + resultA.totalPoints;
+    const newTotalB = teamB.totalScore + resultB.totalPoints;
+
+    // Check Game Win
+    const isGameEnd = newTotalA >= 350 || newTotalB >= 350;
+
+    nextState.teams = {
+        A: { ...teamA, roundScore: resultA.totalPoints, totalScore: newTotalA },
+        B: { ...teamB, roundScore: resultB.totalPoints, totalScore: newTotalB }
     };
 
-    return [...cards].sort((a, b) => {
-        // 1. Sort by Suit
-        const suitDiff = suitOrder[a.suit] - suitOrder[b.suit];
-        if (suitDiff !== 0) return suitDiff;
+    nextState.phase = isGameEnd ? 'GAME_END' : 'ROUND_END';
+    nextState.logs = [...nextState.logs, `Round Over! Score: A +${resultA.totalPoints}, B +${resultB.totalPoints}`];
 
-        // 2. Sort by Rank (Desc)
-        // Jokers: Let's put them at the very start (left). Wilds are special.
-        const valA = a.isDevilJoker ? 100 : rankOrder[a.rank];
-        const valB = b.isDevilJoker ? 100 : rankOrder[b.rank];
-
-        return valB - valA; // Descending
-    });
+    return nextState;
 }
+
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
     switch (action.type) {
@@ -203,7 +234,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             // Deal Players
             players.forEach(p => {
                 const rawHand = deck.splice(0, 11);
-                p.hand = sortHand(rawHand); // AUTO SORT ON DEAL
+                p.hand = state.autoSortHand ? sortHand(rawHand) : rawHand;
             });
 
             const discardPile: Card[] = [];
@@ -241,7 +272,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
             const players = state.players.map(p => {
                 if (p.id === action.payload.playerId) {
-                    return { ...p, hand: [...p.hand, card] }; // NO AUTO SORT
+                    const newHand = [...p.hand, card];
+                    return { ...p, hand: state.autoSortHand ? sortHand(newHand) : newHand };
                 }
                 return p;
             });
@@ -266,7 +298,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
             const players = state.players.map(p => {
                 if (p.id === action.payload.playerId) {
-                    return { ...p, hand: [...p.hand, ...discardPile] }; // NO AUTO SORT
+                    const newHand = [...p.hand, ...discardPile];
+                    return { ...p, hand: state.autoSortHand ? sortHand(newHand) : newHand };
                 }
                 return p;
             });
@@ -341,19 +374,30 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 logs: [...state.logs, `Player melded ${cards.length} cards`]
             };
 
-            // MOUR CHECK
-            const team = nextState.teams[teamId];
-            if (newHand.length === 0 && !team.hasTakenMour) {
-                const mour = team.mourPile;
-                nextState = {
-                    ...nextState,
-                    teams: {
-                        ...nextState.teams,
-                        [teamId]: { ...team, mourPile: [], hasTakenMour: true }
-                    },
-                    players: nextState.players.map(p => p.id === player.id ? { ...p, hand: sortHand(mour) } : p),
-                    logs: [...nextState.logs, "Player took the Mour!"]
-                };
+            // MOUR CHECK / GO OUT CHECK
+            const team2 = nextState.teams[teamId];
+            if (newHand.length === 0) {
+                if (team2.hasTakenMour) {
+                    if (!checkGoOutRequirements(team2)) {
+                        return { ...state, logs: [...state.logs, "Cannot go out: Missing '20 and 10' melds."] };
+                    }
+                    return triggerRoundEnd(nextState, player.id, true);
+                } else {
+                    const mour = team2.mourPile;
+                    nextState = {
+                        ...nextState,
+                        teams: {
+                            ...nextState.teams,
+                            [teamId]: { ...team2, mourPile: [], hasTakenMour: true }
+                        },
+                        players: nextState.players.map(p => p.id === player.id ? { ...p, hand: state.autoSortHand ? sortHand(mour) : mour } : p),
+                        logs: [...nextState.logs, "Player took the Mour (by melding)!"]
+                    };
+                }
+            } else if (newHand.length === 1) {
+                if (team2.hasTakenMour && !checkGoOutRequirements(team2)) {
+                    return { ...state, logs: [...state.logs, "Cannot leave 1 card: You need at least 2 cards to discard one and stay with one."] };
+                }
             }
 
             return nextState;
@@ -438,19 +482,30 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 logs: [...state.logs, `Added to meld`]
             };
 
-            // MOUR CHECK
+            // MOUR CHECK / GO OUT CHECK
             const team2 = nextState.teams[teamId];
-            if (newHand.length === 0 && !team2.hasTakenMour) {
-                const mour = team2.mourPile;
-                nextState = {
-                    ...nextState,
-                    teams: {
-                        ...nextState.teams,
-                        [teamId]: { ...team2, mourPile: [], hasTakenMour: true }
-                    },
-                    players: nextState.players.map(p => p.id === player.id ? { ...p, hand: sortHand(mour) } : p),
-                    logs: [...nextState.logs, "Player took the Mour!"]
-                };
+            if (newHand.length === 0) {
+                if (team2.hasTakenMour) {
+                    if (!checkGoOutRequirements(team2)) {
+                        return { ...state, logs: [...state.logs, "Cannot go out: Missing '20 and 10' melds."] };
+                    }
+                    return triggerRoundEnd(nextState, player.id, true);
+                } else {
+                    const mour = team2.mourPile;
+                    nextState = {
+                        ...nextState,
+                        teams: {
+                            ...nextState.teams,
+                            [teamId]: { ...team2, mourPile: [], hasTakenMour: true }
+                        },
+                        players: nextState.players.map(p => p.id === player.id ? { ...p, hand: state.autoSortHand ? sortHand(mour) : mour } : p),
+                        logs: [...nextState.logs, "Player took the Mour (by adding to meld)!"]
+                    };
+                }
+            } else if (newHand.length === 1) {
+                if (team2.hasTakenMour && !checkGoOutRequirements(team2)) {
+                    return { ...state, logs: [...state.logs, "Cannot leave 1 card: You need at least 2 cards to discard one and stay with one."] };
+                }
             }
 
             return nextState;
@@ -524,7 +579,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             nextState.players = nextState.players.map(p => p.id === player.id ? { ...p, hand: newHand } : p);
             nextState.discardPile = [...nextState.discardPile, card];
 
-            // Check Mour Condition
+            // CHECK MOUR CONDITION
             const team = nextState.teams[player.teamId];
             if (newHand.length === 0 && !team.hasTakenMour) {
                 // Take Mour
@@ -533,43 +588,25 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                     ...nextState.teams,
                     [player.teamId]: { ...team, mourPile: [], hasTakenMour: true }
                 };
-                nextState.players = nextState.players.map(p => p.id === player.id ? { ...p, hand: sortHand(mour) } : p); // AUTO SORT MOUR PICKUP
+                nextState.players = nextState.players.map(p => p.id === player.id ? { ...p, hand: state.autoSortHand ? sortHand(mour) : mour } : p);
                 nextState.logs = [...nextState.logs, "Player took the Mour!"];
-
             }
 
-            // CHECK GOING OUT CONDITION (Hand Empty AND Mour Taken)
+            // CHECK ROUND END CONDITIONS
+            const hasRequiredMelds = checkGoOutRequirements(team);
             const hasGoneOut = newHand.length === 0 && team.hasTakenMour;
+            const isDeckEmpty = nextState.deck.length === 0;
 
             if (hasGoneOut) {
-                // ROUND END!
-                const teamA = nextState.teams.A;
-                const teamB = nextState.teams.B;
+                if (!hasRequiredMelds) {
+                    // BLOCK: You can't discard your last card if you don't meet the meld condition
+                    return state;
+                }
+                return triggerRoundEnd(nextState, player.id, true);
+            }
 
-                // Cards remaining in Hands for penalty
-                const handCardsA = nextState.players.filter(p => p.teamId === 'A').flatMap(p => p.hand);
-                const handCardsB = nextState.players.filter(p => p.teamId === 'B').flatMap(p => p.hand);
-
-                // Calculate Scores
-                const resultA = calculateTeamRoundScore(teamA.melds, handCardsA, teamA.hasTakenMour, player.teamId === 'A'); // Gone out bonus if A
-                const resultB = calculateTeamRoundScore(teamB.melds, handCardsB, teamB.hasTakenMour, player.teamId === 'B');
-
-                // Update Total Scores
-                const newTotalA = teamA.totalScore + resultA.totalPoints;
-                const newTotalB = teamB.totalScore + resultB.totalPoints;
-
-                // Check Game Win
-                const isGameEnd = newTotalA >= 350 || newTotalB >= 350;
-
-                nextState.teams = {
-                    A: { ...teamA, roundScore: resultA.totalPoints, totalScore: newTotalA },
-                    B: { ...teamB, roundScore: resultB.totalPoints, totalScore: newTotalB }
-                };
-
-                nextState.phase = isGameEnd ? 'GAME_END' : 'ROUND_END';
-                nextState.logs = [...nextState.logs, `Round Over! Score: A +${resultA.totalPoints}, B +${resultB.totalPoints}`];
-
-                return nextState;
+            if (isDeckEmpty) {
+                return triggerRoundEnd(nextState, player.id, false);
             }
 
             // NEXT TURN
@@ -581,7 +618,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
             // If it was first turn, ending it now
             if (state.isFirstTurn) {
-                // If the player chose to end or it was the 2nd draw
                 if (action.payload.endFirstTurn || state.firstTurnDrawCount >= 2) {
                     nextState.isFirstTurn = false;
                     nextState.firstTurnDrawCount = 0;
@@ -604,7 +640,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             const mourA = newDeck.splice(0, 11);
             const mourB = newDeck.splice(0, 11);
 
-            const players = state.players.map(p => ({ ...p, hand: sortHand(newDeck.splice(0, 11)) })); // AUTO SORT
+            const players = state.players.map(p => ({ ...p, hand: state.autoSortHand ? sortHand(newDeck.splice(0, 11)) : newDeck.splice(0, 11) }));
             const discardPile: Card[] = [];
             const previousStarterId = state.firstTurnStarterPlayerId || state.currentTurnPlayerId || players[0]?.id || null;
             const previousStarterIndex = previousStarterId ? players.findIndex(p => p.id === previousStarterId) : 0;
@@ -670,6 +706,26 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                         : p
                 )
             };
+        }
+
+        case 'TOGGLE_AUTO_SORT': {
+            const newAutoSort = !state.autoSortHand;
+            let nextState = {
+                ...state,
+                autoSortHand: newAutoSort,
+                logs: [...state.logs, `Auto-sort hand: ${newAutoSort ? 'Enabled' : 'Disabled'}`]
+            };
+
+            // If enabling, sort current player's hand immediately
+            if (newAutoSort && state.currentTurnPlayerId) {
+                nextState.players = nextState.players.map(p =>
+                    p.id === state.currentTurnPlayerId
+                        ? { ...p, hand: sortHand(p.hand) }
+                        : p
+                );
+            }
+
+            return nextState;
         }
 
         case 'SYNC_STATE': {

@@ -87,6 +87,7 @@ export const translations = {
         leaveGame: "Leave Game",
         on: "On",
         off: "Off",
+        autoSort: "Auto-sort Hand",
         close: "Close",
     },
     ar: {
@@ -174,6 +175,7 @@ export const translations = {
         leaveGame: "مغادرة اللعبة",
         on: "تشغيل",
         off: "إيقاف",
+        autoSort: "ترتيب اليد تلقائياً",
         close: "إغلاق",
     }
 };

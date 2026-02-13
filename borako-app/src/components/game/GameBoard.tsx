@@ -84,6 +84,24 @@ export function GameBoard() {
                         </div>
 
                         <div>
+                            <label className="block text-xs uppercase text-slate-500 font-bold mb-3">{t.autoSort}</label>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => actions.toggleAutoSort()}
+                                    className={`flex-1 py-3 rounded-xl font-bold transition-all border-2 ${state.autoSortHand ? 'bg-green-500/10 border-green-500 text-green-400' : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-700'}`}
+                                >
+                                    {t.on}
+                                </button>
+                                <button
+                                    onClick={() => actions.toggleAutoSort()}
+                                    className={`flex-1 py-3 rounded-xl font-bold transition-all border-2 ${!state.autoSortHand ? 'bg-red-500/10 border-red-500 text-red-400' : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-700'}`}
+                                >
+                                    {t.off}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
                             <label className="block text-xs uppercase text-slate-500 font-bold mb-3">
                                 {t.meldSize} ({Math.round(meldSizeScale * 100)}%)
                             </label>

@@ -95,3 +95,13 @@ export function shuffle(cards: Card[]): Card[] {
     }
     return newCards;
 }
+
+export function sortHand(cards: Card[]): Card[] {
+    return [...cards].sort((a, b) => {
+        if (a.suit !== b.suit) {
+            const suitOrder = { 'CLUBS': 0, 'DIAMONDS': 1, 'SPADES': 2, 'HEARTS': 3 };
+            return suitOrder[a.suit] - suitOrder[b.suit];
+        }
+        return b.value - a.value; // Rank Sort
+    });
+}

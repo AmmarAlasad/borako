@@ -242,6 +242,9 @@ export function useGame() {
         resetGame: () => {
             if (isHost()) dispatch({ type: 'RESET_GAME' });
         },
+        toggleAutoSort: () => {
+            handleAction({ type: 'TOGGLE_AUTO_SORT' });
+        },
         leaveGame: () => {
             const me = peerIdRef.current;
             if (!me) return;
