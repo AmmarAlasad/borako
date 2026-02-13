@@ -203,19 +203,11 @@ export function GameBoard() {
             event.returnValue = '';
         };
 
-        const handleUnload = () => {
-            if (hasTriggeredLeaveOnUnloadRef.current) return;
-            hasTriggeredLeaveOnUnloadRef.current = true;
-            actions.leaveGame();
-        };
-
         window.addEventListener('beforeunload', handleBeforeUnload);
-        window.addEventListener('pagehide', handleUnload);
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
-            window.removeEventListener('pagehide', handleUnload);
         };
-    }, [state.phase, actions]);
+    }, [state.phase]);
 
     // Play action sounds for all players (local + remote) based on state deltas.
     useEffect(() => {

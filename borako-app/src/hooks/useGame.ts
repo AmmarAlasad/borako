@@ -107,13 +107,34 @@ export function useGame() {
             }
         });
 
+        connection.setConnectionHandler((connectedPeerId: string) => {
+            const me = peerIdRef.current;
+            const currentState = stateRef.current;
+            const isCurrentHost = currentState.players.find(p => p.isHost)?.id === me;
+
+            // If I am Host and someone (re)connects, broadcast current state to everyone (including them)
+            if (isCurrentHost) {
+                console.log("New peer connected, broadcasting state:", connectedPeerId);
+                connection.broadcast({ type: 'STATE_UPDATE', payload: currentState });
+            }
+        });
+
         connection.setDisconnectHandler((disconnectedPeerId: string) => {
             const me = peerIdRef.current;
             const currentState = stateRef.current;
             const isCurrentHost = currentState.players.find(p => p.isHost)?.id === me;
 
             if (isCurrentHost) {
-                dispatch({ type: 'PLAYER_LEFT', payload: { playerId: disconnectedPeerId } });
+                // Grace period: Wait 2 seconds to see if they reconnect (refresh)
+                // If they are STILL not connected after 2s, THEN remove them.
+                setTimeout(() => {
+                    if (!connection.isConnected(disconnectedPeerId)) {
+                        console.log("Player permanently left:", disconnectedPeerId);
+                        dispatch({ type: 'PLAYER_LEFT', payload: { playerId: disconnectedPeerId } });
+                    } else {
+                        console.log("Player reconnected during grace period:", disconnectedPeerId);
+                    }
+                }, 2000);
                 return;
             }
 

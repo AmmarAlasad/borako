@@ -6,12 +6,14 @@ export type Message =
 
 type MessageCallback = (msg: Message) => void;
 type DisconnectCallback = (peerId: string) => void;
+type ConnectionCallback = (peerId: string) => void;
 
 class ConnectionManager {
     private peer: Peer | null = null;
     private connections: DataConnection[] = []; // For Host: list of clients. For Client: valid connection to host.
     private onMessage: MessageCallback | null = null;
     private onDisconnect: DisconnectCallback | null = null;
+    private onConnection: ConnectionCallback | null = null;
     private myId: string = '';
 
     initialize(id?: string): Promise<string> {
@@ -79,6 +81,10 @@ class ConnectionManager {
     private handleConnection(conn: DataConnection) {
         this.connections.push(conn);
 
+        if (this.onConnection) {
+            this.onConnection(conn.peer);
+        }
+
         conn.on('data', (data: any) => {
             if (this.onMessage) {
                 this.onMessage(data as Message);
@@ -88,7 +94,11 @@ class ConnectionManager {
         conn.on('close', () => {
             console.log("Connection closed:", conn.peer);
             this.connections = this.connections.filter(c => c !== conn);
-            if (this.onDisconnect) {
+
+            // Re-check: only trigger disconnect if NO other connections for this peer ID exist.
+            // This handles refreshes where a new connection might already be established.
+            const stillConnected = this.connections.some(c => c.peer === conn.peer);
+            if (this.onDisconnect && !stillConnected) {
                 this.onDisconnect(conn.peer);
             }
         });
@@ -100,6 +110,10 @@ class ConnectionManager {
 
     setDisconnectHandler(callback: DisconnectCallback) {
         this.onDisconnect = callback;
+    }
+
+    setConnectionHandler(callback: ConnectionCallback) {
+        this.onConnection = callback;
     }
 
     broadcast(msg: Message) {
@@ -120,6 +134,10 @@ class ConnectionManager {
 
     getId() {
         return this.myId;
+    }
+
+    isConnected(peerId: string) {
+        return this.connections.some(c => c.peer === peerId && c.open);
     }
 }
 
