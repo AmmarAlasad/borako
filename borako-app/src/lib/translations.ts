@@ -88,6 +88,7 @@ export const translations = {
         on: "On",
         off: "Off",
         autoSort: "Auto-sort Hand",
+        meldSpacing: "Melds Spacing",
         close: "Close",
     },
     ar: {
@@ -176,6 +177,7 @@ export const translations = {
         on: "تشغيل",
         off: "إيقاف",
         autoSort: "ترتيب اليد تلقائياً",
+        meldSpacing: "المسافة بين الفتحات",
         close: "إغلاق",
     }
 };

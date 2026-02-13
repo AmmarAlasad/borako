@@ -115,6 +115,21 @@ export function GameBoard() {
                                 className="w-full accent-yellow-400"
                             />
                         </div>
+
+                        <div>
+                            <label className="block text-xs uppercase text-slate-500 font-bold mb-3">
+                                {t.meldSpacing} ({state.meldSpacing}px)
+                            </label>
+                            <input
+                                type="range"
+                                min={0}
+                                max={40}
+                                step={1}
+                                value={state.meldSpacing}
+                                onChange={(e) => actions.setMeldSpacing(Number(e.target.value))}
+                                className="w-full accent-yellow-400"
+                            />
+                        </div>
                     </div>
 
                     <div className="mt-8 space-y-3">
@@ -1035,7 +1050,7 @@ export function GameBoard() {
                             <div className={`text-xs font-black ${rightTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2 text-right max-md:text-left`}>
                                 {rightTeamId === 'A' ? (state.teams.A.name || t.teamA) : (state.teams.B.name || t.teamB)} {t.melds} {rightTeamId !== myTeamId ? `(${t.enemy})` : ''}
                             </div>
-                            <div className="flex-1 flex flex-wrap content-start gap-1 max-md:gap-0 justify-end max-md:justify-start overflow-y-auto overflow-x-hidden min-h-[80px] md:min-h-0 md:pr-1 max-md:pr-1">
+                            <div className="flex-1 flex flex-wrap content-start justify-end max-md:justify-start overflow-y-auto overflow-x-hidden min-h-[80px] md:min-h-0 md:pr-1 max-md:pr-1" style={{ gap: `${state.meldSpacing}px` }}>
                                 {(rightTeam?.melds || []).map(meld => (
                                     <div key={meld.id}
                                         id={`meld-drop-${meld.id}`}
@@ -1072,7 +1087,7 @@ export function GameBoard() {
                             <div className={`text-xs font-black ${leftTeamId === 'A' ? 'text-blue-400' : 'text-red-400'} opacity-80 tracking-[0.2em] uppercase mb-2`}>
                                 {leftTeamId === 'A' ? (state.teams.A.name || t.teamA) : (state.teams.B.name || t.teamB)} {t.melds} {leftTeamId === myTeamId ? `(${t.you})` : ''}
                             </div>
-                            <div className="flex-1 flex flex-wrap content-start gap-1 max-md:gap-0 overflow-y-auto overflow-x-hidden min-h-[80px] md:min-h-0 md:pr-1 max-md:pr-1">
+                            <div className="flex-1 flex flex-wrap content-start overflow-y-auto overflow-x-hidden min-h-[80px] md:min-h-0 md:pr-1 max-md:pr-1" style={{ gap: `${state.meldSpacing}px` }}>
                                 {(leftTeam?.melds || []).map(meld => (
                                     <div key={meld.id}
                                         id={`meld-drop-${meld.id}`}

@@ -76,6 +76,7 @@ export interface GameState {
 
     // Settings
     autoSortHand: boolean;
+    meldSpacing: number;
 
     // Messages/Logs
     logs: string[];

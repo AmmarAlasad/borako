@@ -22,6 +22,7 @@ export type GameAction =
     | { type: 'NEXT_ROUND' }
     | { type: 'RESET_GAME' }
     | { type: 'TOGGLE_AUTO_SORT' }
+    | { type: 'SET_MELD_SPACING'; payload: number }
     | { type: 'SYNC_STATE'; payload: GameState };
 
 export const INITIAL_STATE: GameState = {
@@ -43,6 +44,7 @@ export const INITIAL_STATE: GameState = {
     isFirstTurn: false,
     firstTurnDrawCount: 0,
     autoSortHand: true,
+    meldSpacing: 4,
     logs: [],
 };
 
@@ -726,6 +728,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             }
 
             return nextState;
+        }
+
+        case 'SET_MELD_SPACING': {
+            return {
+                ...state,
+                meldSpacing: action.payload
+            };
         }
 
         case 'SYNC_STATE': {

@@ -245,6 +245,9 @@ export function useGame() {
         toggleAutoSort: () => {
             handleAction({ type: 'TOGGLE_AUTO_SORT' });
         },
+        setMeldSpacing: (spacing: number) => {
+            handleAction({ type: 'SET_MELD_SPACING', payload: spacing });
+        },
         leaveGame: () => {
             const me = peerIdRef.current;
             if (!me) return;
