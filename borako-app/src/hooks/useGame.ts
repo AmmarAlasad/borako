@@ -182,13 +182,47 @@ export function useGame() {
             }
 
             if (disconnectedPeerId === hostIdRef.current) {
-                clearPersistedSession();
+                console.warn(`Host ${disconnectedPeerId} disconnected. Entering grace period...`);
+                setSignalingStatus('reconnecting');
                 setIsConnected(false);
-                setHostId(null);
-                dispatch({
-                    type: 'HOST_DISCONNECTED',
-                    payload: { message: 'Host left the game. Match was reset.' }
-                });
+
+                // Attempt to reconnect for 15 seconds (Host refresh takes ~2-5s)
+                let attempts = 0;
+                const maxAttempts = 15;
+                const targetHostId = hostIdRef.current;
+
+                const tryReconnect = async () => {
+                    // Stop if we manually left or host changed
+                    if (hostIdRef.current !== targetHostId) return;
+
+                    if (attempts >= maxAttempts) {
+                        console.error("Host reconnection failed. Giving up.");
+                        clearPersistedSession();
+                        setHostId(null);
+                        dispatch({
+                            type: 'HOST_DISCONNECTED',
+                            payload: { message: 'Lost connection to Host.' }
+                        });
+                        setSignalingStatus('disconnected');
+                        return;
+                    }
+
+                    attempts++;
+                    try {
+                        // console.log(`Reconnecting to host (Attempt ${attempts}/${maxAttempts})...`);
+                        await connection.connect(targetHostId);
+
+                        console.log("Reconnected to Host!");
+                        setIsConnected(true);
+                        setSignalingStatus('connected');
+
+                    } catch (e) {
+                        setTimeout(tryReconnect, 1000);
+                    }
+                };
+
+                setTimeout(tryReconnect, 1000);
+                return;
             }
         });
 
