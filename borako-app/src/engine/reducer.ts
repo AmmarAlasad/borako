@@ -66,9 +66,9 @@ function triggerRoundEnd(state: GameState, finisherId: string, isGoOut: boolean)
     const teamB = nextState.teams.B;
 
     if (!isGoOut) {
-        nextState.logs = [...nextState.logs, "Deck is empty! Round ending."];
+        nextState.logs = [...nextState.logs, "info:deckEmpty"];
     } else {
-        nextState.logs = [...nextState.logs, `${player.name} went out!`];
+        nextState.logs = [...nextState.logs, `info:wentOut:${player.name}`];
     }
 
     // Cards remaining in Hands for penalty
@@ -92,7 +92,7 @@ function triggerRoundEnd(state: GameState, finisherId: string, isGoOut: boolean)
     };
 
     nextState.phase = isGameEnd ? 'GAME_END' : 'ROUND_END';
-    nextState.logs = [...nextState.logs, `Round Over! Score: A +${resultA.totalPoints}, B +${resultB.totalPoints}`];
+    nextState.logs = [...nextState.logs, `info:roundOver:${resultA.totalPoints}:${resultB.totalPoints}`];
 
     return nextState;
 }
@@ -184,7 +184,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 return {
                     ...state,
                     players: normalizedPlayers,
-                    logs: [...state.logs, `${leavingPlayer.name} left the lobby`]
+                    logs: [...state.logs, `info:playerLeftLobby:${leavingPlayer.name}`]
                 };
             }
 
@@ -197,7 +197,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 ...INITIAL_STATE,
                 phase: 'LOBBY',
                 players: normalizedPlayers,
-                logs: [`${leavingPlayer.name} left the game. Match was reset for everyone.`]
+                logs: [`info:playerLeftGame:${leavingPlayer.name}`]
             };
         }
 
@@ -259,7 +259,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 hasSwept: false,
                 isFirstTurn: true,
                 firstTurnDrawCount: 0,
-                logs: [...state.logs, "Game Started!"]
+                logs: [...state.logs, "info:gameStarted"]
             };
         }
 
@@ -287,7 +287,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 turnPhase: 'PLAYING',
                 firstTurnDrawCount: state.isFirstTurn ? state.firstTurnDrawCount + 1 : state.firstTurnDrawCount,
                 lastDrawnCardId: card.id,
-                logs: [...state.logs, "Player drew a card"]
+                logs: [...state.logs, "info:drawCard"]
             };
         }
 
@@ -315,7 +315,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 mustMeldAfterSweep: true, // Enforce meld requirement
                 sweptCards: discardPile, // Store for potential undo
                 isFirstTurn: false, // Sweeping ends the special first-turn drawing rule
-                logs: [...state.logs, "Player swept the pile!"]
+                logs: [...state.logs, "info:sweptPile"]
             };
         }
 
@@ -327,7 +327,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             const result = validateMeld(cards);
 
             if (!result.isValid) {
-                return state;
+                return { ...state, logs: [...state.logs, `error:invalidMeld:${result.message || 'unknownError'}`] };
             }
 
             // Move cards from Hand -> Team Meld
@@ -373,7 +373,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 },
                 mustMeldAfterSweep: false,
                 sweptCards: [],
-                logs: [...state.logs, `Player melded ${cards.length} cards`]
+                logs: [...state.logs, `info:meldedCards:${cards.length}`]
             };
 
             // MOUR CHECK / GO OUT CHECK
@@ -381,7 +381,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             if (newHand.length === 0) {
                 if (team2.hasTakenMour) {
                     if (!checkGoOutRequirements(team2)) {
-                        return { ...state, logs: [...state.logs, "Cannot go out: Missing '20 and 10' melds."] };
+                        return { ...state, logs: [...state.logs, "error:cannotGoOut"] };
                     }
                     return triggerRoundEnd(nextState, player.id, true);
                 } else {
@@ -393,12 +393,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                             [teamId]: { ...team2, mourPile: [], hasTakenMour: true }
                         },
                         players: nextState.players.map(p => p.id === player.id ? { ...p, hand: state.autoSortHand ? sortHand(mour) : mour } : p),
-                        logs: [...nextState.logs, "Player took the Mour (by melding)!"]
+                        logs: [...nextState.logs, "info:tookMourMelding"]
                     };
                 }
             } else if (newHand.length === 1) {
                 if (team2.hasTakenMour && !checkGoOutRequirements(team2)) {
-                    return { ...state, logs: [...state.logs, "Cannot leave 1 card: You need at least 2 cards to discard one and stay with one."] };
+                    return { ...state, logs: [...state.logs, "cannotLeaveOne"] };
                 }
             }
 
@@ -426,7 +426,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             // 3. Size increased
             if (!result.isValid) {
                 // Try sorting? validateMeld sorts internally.
-                return state;
+                return { ...state, logs: [...state.logs, `error:invalidExtension`] };
             }
 
             // Special check: Can't change Meld Type usually? 
@@ -481,7 +481,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 },
                 mustMeldAfterSweep: false,
                 sweptCards: [],
-                logs: [...state.logs, `Added to meld`]
+                logs: [...state.logs, `info:addedToMeld`]
             };
 
             // MOUR CHECK / GO OUT CHECK
@@ -489,7 +489,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             if (newHand.length === 0) {
                 if (team2.hasTakenMour) {
                     if (!checkGoOutRequirements(team2)) {
-                        return { ...state, logs: [...state.logs, "Cannot go out: Missing '20 and 10' melds."] };
+                        return { ...state, logs: [...state.logs, "error:cannotGoOut"] };
                     }
                     return triggerRoundEnd(nextState, player.id, true);
                 } else {
@@ -501,12 +501,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                             [teamId]: { ...team2, mourPile: [], hasTakenMour: true }
                         },
                         players: nextState.players.map(p => p.id === player.id ? { ...p, hand: state.autoSortHand ? sortHand(mour) : mour } : p),
-                        logs: [...nextState.logs, "Player took the Mour (by adding to meld)!"]
+                        logs: [...nextState.logs, "info:tookMourAdding"]
                     };
                 }
             } else if (newHand.length === 1) {
                 if (team2.hasTakenMour && !checkGoOutRequirements(team2)) {
-                    return { ...state, logs: [...state.logs, "Cannot leave 1 card: You need at least 2 cards to discard one and stay with one."] };
+                    return { ...state, logs: [...state.logs, "cannotLeaveOne"] };
                 }
             }
 
@@ -522,7 +522,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 if (action.payload.cardId !== state.lastDrawnCardId) {
                     return {
                         ...state,
-                        logs: [...state.logs, "Must discard the card you just drawn to draw again!"]
+                        logs: [...state.logs, "error:mustDiscardLastDrawn"]
                     };
                 }
             }
@@ -547,7 +547,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                     hasSwept: false,
                     mustMeldAfterSweep: false,
                     sweptCards: [],
-                    logs: [...state.logs, "Sweep cancelled - must draw from deck instead"]
+                    logs: [...state.logs, "error:sweepCancelled"]
                 };
             }
 
@@ -591,7 +591,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                     [player.teamId]: { ...team, mourPile: [], hasTakenMour: true }
                 };
                 nextState.players = nextState.players.map(p => p.id === player.id ? { ...p, hand: state.autoSortHand ? sortHand(mour) : mour } : p);
-                nextState.logs = [...nextState.logs, "Player took the Mour!"];
+                nextState.logs = [...nextState.logs, "info:tookMour"];
             }
 
             // CHECK ROUND END CONDITIONS

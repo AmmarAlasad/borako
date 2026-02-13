@@ -11,7 +11,7 @@ export function GameBoard() {
     const [selectedCards, setSelectedCards] = useState<string[]>([]);
     const [selectedMeldId, setSelectedMeldId] = useState<string | null>(null);
     const [lang, setLang] = useState<Language>('ar'); // Language State
-    const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [toast, setToast] = useState<{ msg: string; type: 'info' | 'error' } | null>(null);
     const [showSettings, setShowSettings] = useState(false);
     const [soundEnabled, setSoundEnabled] = useState(true);
     const [meldSizeScale, setMeldSizeScale] = useState(1.08);
@@ -20,6 +20,13 @@ export function GameBoard() {
     const hasInitializedActionSoundRefs = useRef(false);
     const previousActionSoundCounts = useRef({ discardCount: 0, meldCardCount: 0 });
     const hasTriggeredLeaveOnUnloadRef = useRef(false);
+    const prevLogLength = useRef(0);
+
+    // Feedback Toast Helper (Hoisted)
+    const showToast = (msg: string, type: 'info' | 'error' = 'info') => {
+        setToast({ msg, type });
+        setTimeout(() => setToast(null), 2000);
+    };
 
     // Audio Refs
     const drawSound = useRef(new Audio('/sounds/card-draw.wav'));
@@ -265,6 +272,40 @@ export function GameBoard() {
         previousActionSoundCounts.current = { discardCount, meldCardCount };
     }, [state.discardPile.length, state.teams.A.melds, state.teams.B.melds]);
 
+    // Toast for Logs
+    useEffect(() => {
+        if (state.logs.length > prevLogLength.current) {
+            const lastLog = state.logs[state.logs.length - 1];
+            if (lastLog) {
+                // Parse "type:key:arg1:arg2"
+                const parts = lastLog.split(':');
+                const type = parts[0] === 'error' ? 'error' : 'info';
+
+                // If it follows the protocol "type:key"
+                if (parts.length >= 2) {
+                    const key = parts[1];
+                    const args = parts.slice(2);
+
+                    let translated = t[key as keyof typeof t] || key;
+
+                    // Replace {0}, {1} placeholders
+                    args.forEach((arg, index) => {
+                        translated = translated.replace(`{${index}}`, arg);
+                    });
+
+                    showToast(translated, type);
+                } else {
+                    // Legacy or raw string fallback
+                    const translatedLog = t[lastLog as keyof typeof t] || lastLog;
+                    showToast(translatedLog, 'info');
+                }
+            }
+            prevLogLength.current = state.logs.length;
+        } else if (state.logs.length < prevLogLength.current) {
+            prevLogLength.current = state.logs.length;
+        }
+    }, [state.logs, t]); // Added 't' to dependency to update on language change
+
     // Helper to calculate how many cards should be visible in a player's hand during dealing
     const getVisibleCardCount = (targetPlayerId: string, totalHandSize: number) => {
         if (!isDealing) return totalHandSize;
@@ -298,11 +339,6 @@ export function GameBoard() {
         return Math.min(count, totalHandSize);
     };
 
-    // Feedback Toast State (Hoisted to top)
-    const showToast = (msg: string) => {
-        setToastMessage(msg);
-        setTimeout(() => setToastMessage(null), 3000);
-    };
 
     const handleHost = async () => {
         setIsLoading(true);
@@ -855,15 +891,7 @@ export function GameBoard() {
             {/* Background Texture Overlay */}
             <div className="absolute inset-0 pointer-events-none opacity-30 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] mix-blend-overlay z-0"></div>
 
-            {/* ERROR / FEEDBACK POPUP */}
-            {toastMessage && (
-                <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-4 fade-in duration-300">
-                    <div className="bg-red-600 text-white font-bold px-6 py-3 rounded-xl shadow-2xl border-2 border-white/20 flex items-center gap-3">
-                        <span className="text-2xl">⚠️</span>
-                        <span>{toastMessage}</span>
-                    </div>
-                </div>
-            )}
+            {/* ERROR / FEEDBACK POPUP REMOVED - using new toast system */}
 
             {/* Main Grid Container */}
             <div className="relative z-10 w-full h-full grid md:grid-rows-[15%_55%_30%] max-md:flex max-md:flex-col p-4 max-md:p-0 gap-4 max-md:gap-0">
@@ -1483,6 +1511,24 @@ export function GameBoard() {
                 </div>
             </div >
             {renderSettingsModal()}
+
+            {/* TOAST NOTIFICATION */}
+            <AnimatePresence>
+                {toast && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -50, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                        className={`fixed top-24 left-1/2 transform -translate-x-1/2 z-[100] px-6 py-3 rounded-full shadow-2xl backdrop-blur-md border border-white/10 flex items-center gap-3 ${toast.type === 'error'
+                            ? 'bg-red-500/90 text-white'
+                            : 'bg-yellow-500/90 text-black'
+                            }`}
+                    >
+                        <span className="text-xl">{toast.type === 'error' ? '⚠️' : 'ℹ️'}</span>
+                        <span className="font-bold text-sm md:text-base">{toast.msg}</span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div >
     );
 }
