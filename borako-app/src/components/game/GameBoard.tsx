@@ -6,12 +6,13 @@ import { calculateDisplayedMeldValue } from '../../engine/scoring';
 import { translations, type Language } from '../../lib/translations';
 
 export function GameBoard() {
-    const { state, actions, peerId } = useGame();
+    const { state, actions, peerId, signalingStatus, signalingError } = useGame();
     const isHost = state.players.find(p => p.id === peerId)?.isHost;
     const [selectedCards, setSelectedCards] = useState<string[]>([]);
     const [selectedMeldId, setSelectedMeldId] = useState<string | null>(null);
     const [lang, setLang] = useState<Language>('ar'); // Language State
     const [toast, setToast] = useState<{ msg: string; type: 'info' | 'error' } | null>(null);
+    const [copyFeedback, setCopyFeedback] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [soundEnabled, setSoundEnabled] = useState(true);
     const [meldSizeScale, setMeldSizeScale] = useState(1.08);
@@ -344,9 +345,10 @@ export function GameBoard() {
         setIsLoading(true);
         try {
             await actions.initGame(playerName, { A: teamAName, B: teamBName });
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
             setIsLoading(false);
+            showToast(e.message || "Failed to initialize game session", 'error');
         }
     };
 
@@ -354,10 +356,10 @@ export function GameBoard() {
         setIsLoading(true);
         try {
             await actions.joinGame(joinHostId, playerName);
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
-            alert("Failed to join game. Check Host ID.");
             setIsLoading(false);
+            showToast(e.message || "Failed to join game. Check Host ID.", 'error');
         }
     };
 
@@ -501,6 +503,13 @@ export function GameBoard() {
             <div className="flex flex-col items-center justify-center h-screen bg-slate-950 text-white relative overflow-hidden">
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-green-900/40 via-slate-950 to-slate-950" />
 
+                {toast && (
+                    <div className={`absolute top-8 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-2xl z-[100] animate-in slide-in-from-top-4 fade-in duration-300 font-bold flex items-center gap-3 ${toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-slate-800 text-white border border-white/20'}`}>
+                        <span>{toast.type === 'error' ? '⚠️' : 'ℹ️'}</span>
+                        {toast.msg}
+                    </div>
+                )}
+
                 <div className="z-10 bg-slate-900/80 p-8 rounded-2xl shadow-2xl border border-white/10 backdrop-blur-md max-w-md w-full">
                     <h1 className="text-5xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent mb-2 text-center">{t.borako}</h1>
                     <p className="text-blue-200 text-center mb-8">{t.subtitle}</p>
@@ -611,6 +620,12 @@ export function GameBoard() {
     if (state.phase === 'LOBBY') {
         return (
             <div className="flex flex-col items-center justify-center h-screen bg-slate-900 text-white relative">
+                {toast && (
+                    <div className={`absolute top-8 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-2xl z-[100] animate-in slide-in-from-top-4 fade-in duration-300 font-bold flex items-center gap-3 ${toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-slate-800 text-white border border-white/20'}`}>
+                        <span>{toast.type === 'error' ? '⚠️' : 'ℹ️'}</span>
+                        {toast.msg}
+                    </div>
+                )}
                 <div className="absolute top-4 left-4 z-50">
                     <button
                         onClick={() => setShowSettings(true)}
@@ -626,20 +641,55 @@ export function GameBoard() {
                             <h1 className="text-4xl font-bold text-white">{t.lobby}</h1>
                             <p className="text-slate-400">{t.waiting}</p>
                         </div>
-                        <div className="text-right">
-                            <p className="text-xs uppercase text-slate-500 font-bold">{t.roomCode}</p>
+                        <div className="text-right flex flex-col items-end">
+                            {/* Connection Status Indicator */}
+                            <div className="flex items-center gap-2 mb-2 bg-black/40 px-3 py-1 rounded-full border border-white/5">
+                                <div className={`w-2 h-2 rounded-full transition-colors ${signalingStatus === 'connected' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 animate-pulse'}`} />
+                                <span className={`text-[10px] uppercase font-bold tracking-wider ${signalingStatus === 'connected' ? 'text-green-500' : 'text-red-400'}`}>
+                                    {signalingStatus === 'connected' ? t.statusConnected || 'Online' : t.statusDisconnected || 'Offline'}
+                                </span>
+                            </div>
+
+                            <p className="text-xs uppercase text-slate-500 font-bold mb-1">{t.roomCode}</p>
                             <button
-                                className="text-xl font-mono text-yellow-400 hover:text-yellow-300 bg-black/30 px-3 py-1 rounded cursor-pointer transition-colors"
+                                className="relative text-xl font-mono text-yellow-400 hover:text-yellow-300 bg-black/30 px-4 py-2 rounded-lg cursor-pointer transition-all border border-yellow-500/20 hover:border-yellow-500/50 active:scale-95"
                                 onClick={() => {
                                     if (peerId) {
-                                        navigator.clipboard.writeText(peerId);
+                                        // Mobile safe copy
+                                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                                            navigator.clipboard.writeText(peerId)
+                                                .then(() => setCopyFeedback(true))
+                                                .catch(() => alert("Copy failed, please select and copy manually."));
+                                        } else {
+                                            // Fallback
+                                            const textArea = document.createElement("textarea");
+                                            textArea.value = peerId;
+                                            document.body.appendChild(textArea);
+                                            textArea.select();
+                                            try {
+                                                document.execCommand('copy');
+                                                setCopyFeedback(true);
+                                            } catch (err) {
+                                                prompt("Copy Room Code:", peerId);
+                                            }
+                                            document.body.removeChild(textArea);
+                                        }
+                                        setTimeout(() => setCopyFeedback(false), 2000);
                                     }
                                 }}
                             >
-                                {peerId || 'Generating...'}
+                                {peerId || '...'}
+                                {copyFeedback && (
+                                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-green-500 text-black text-xs font-bold px-2 py-1 rounded shadow-lg animate-in fade-in slide-in-from-bottom-2">
+                                        {t.copied || "Copied!"}
+                                    </div>
+                                )}
                             </button>
-                            {!peerId && (
-                                <div className="text-xs text-yellow-500 mt-2 text-right">{t.connecting}</div>
+
+                            {signalingError && (
+                                <div className="text-[10px] text-red-400 mt-2 max-w-[200px] text-right leading-tight bg-red-900/20 p-2 rounded border border-red-500/20">
+                                    {t.statusError}: {signalingError}
+                                </div>
                             )}
                         </div>
                     </div>

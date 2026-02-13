@@ -36,6 +36,8 @@ export function useGame() {
     const [peerId, setPeerId] = useState<string | null>(restored?.peerId ?? null);
     const [isConnected, setIsConnected] = useState(restored?.isConnected ?? false);
     const [hostId, setHostId] = useState<string | null>(restored?.hostId ?? null);
+    const [signalingStatus, setSignalingStatus] = useState<'connected' | 'disconnected' | 'reconnecting' | 'error'>('disconnected');
+    const [signalingError, setSignalingError] = useState<string | null>(null);
     const stateRef = useRef(state);
     const peerIdRef = useRef(peerId);
     const hostIdRef = useRef(hostId);
@@ -61,6 +63,7 @@ export function useGame() {
 
         (async () => {
             try {
+                // Try to initialize with old ID
                 await connection.initialize(peerId);
                 if (cancelled) return;
 
@@ -68,8 +71,25 @@ export function useGame() {
                     await connection.connect(hostId);
                 }
                 if (!cancelled) setIsConnected(true);
-            } catch {
-                // If reconnection fails, keep local session state visible and allow manual retry.
+            } catch (err: any) {
+                console.error("Restoration failed:", err);
+
+                // If ID is taken (unavailable-id), wait 1s and try ONE more time
+                if (err.message && err.message.includes('ID Taken')) {
+                    console.log("Retrying ID claim in 1s...");
+                    await new Promise(r => setTimeout(r, 1000));
+                    if (cancelled) return;
+                    try {
+                        await connection.initialize(peerId);
+                        if (!isRestoredHost && hostId) await connection.connect(hostId);
+                        if (!cancelled) setIsConnected(true);
+                        return;
+                    } catch (retryErr) {
+                        console.error("Retry failed:", retryErr);
+                    }
+                }
+
+                // If reconnection fails, keep local session state visible but offline
                 if (!cancelled) setIsConnected(false);
             }
         })();
@@ -79,6 +99,15 @@ export function useGame() {
         };
         // Intentionally run once from restored values only.
         // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Cleanup on Close/Refresh to free ID
+    useEffect(() => {
+        const handleUnload = () => {
+            connection.destroy();
+        };
+        window.addEventListener('beforeunload', handleUnload);
+        return () => window.removeEventListener('beforeunload', handleUnload);
     }, []);
 
     // Persist active session
@@ -148,6 +177,31 @@ export function useGame() {
                 });
             }
         });
+
+        // Track Signaling Status
+        connection.setSignalingStatusHandler((status, err) => {
+            setSignalingStatus(status);
+            if (status === 'error' && err) {
+                setSignalingError(err.message || String(err));
+            } else {
+                setSignalingError(null);
+            }
+        });
+    }, []);
+
+    // Reconnect on visibility change (Mobile background thaw)
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                console.log("App foregrounded, ensuring signaling connection...");
+                connection.reconnectSignaling();
+            }
+        };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        return () => {
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+        };
     }, []);
 
     // Broadcast State Change (Host Only)
@@ -301,5 +355,5 @@ export function useGame() {
         }
     };
 
-    return { state, dispatch, actions, peerId, isConnected };
+    return { state, dispatch, actions, peerId, isConnected, signalingStatus, signalingError };
 }

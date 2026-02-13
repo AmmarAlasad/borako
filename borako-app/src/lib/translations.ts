@@ -108,6 +108,11 @@ export const translations = {
         autoSort: "Auto-sort Hand",
         meldSpacing: "Melds Spacing",
         close: "Close",
+        statusConnected: "Online",
+        statusDisconnected: "Offline (Reconnecting...)",
+        statusError: "Connection Error",
+        copy: "Copy",
+        copied: "Copied!",
     },
     ar: {
         // General
@@ -215,5 +220,10 @@ export const translations = {
         autoSort: "ترتيب اليد تلقائياً",
         meldSpacing: "المسافة بين الفتحات",
         close: "إغلاق",
+        statusConnected: "متصل",
+        statusDisconnected: "غير متصل (جاري إعادة الاتصال...)",
+        statusError: "خطأ في الاتصال",
+        copy: "نسخ",
+        copied: "تم النسخ!",
     }
 };

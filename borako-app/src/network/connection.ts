@@ -14,6 +14,7 @@ class ConnectionManager {
     private onMessage: MessageCallback | null = null;
     private onDisconnect: DisconnectCallback | null = null;
     private onConnection: ConnectionCallback | null = null;
+    private onSignalingStatus: ((status: 'connected' | 'disconnected' | 'reconnecting' | 'error', error?: any) => void) | null = null;
     private myId: string = '';
     private pendingConnectReject: ((err: Error) => void) | null = null;
 
@@ -24,8 +25,13 @@ class ConnectionManager {
             }
             this.myId = '';
 
-            // Minimal, proven cross-browser config
-            const peer = id ? new Peer(id, {
+            // Configuration for self-hosted PeerJS server
+            const PEER_CONFIG = {
+                host: 'peer.ammaralasaad.de',
+                port: 443,
+                path: '/signal',
+                key: 'a1f40f3399537cb8a9ed56345f1843f2408b13401bf58f9e',
+                secure: true,
                 debug: 2,
                 config: {
                     iceServers: [
@@ -48,36 +54,27 @@ class ConnectionManager {
                         }
                     ]
                 }
-            }) : new Peer({
-                debug: 2,
-                config: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:global.stun.twilio.com:3478' },
-                        {
-                            urls: 'turn:openrelay.metered.ca:80',
-                            username: 'openrelayproject',
-                            credential: 'openrelayproject'
-                        },
-                        {
-                            urls: 'turn:openrelay.metered.ca:443',
-                            username: 'openrelayproject',
-                            credential: 'openrelayproject'
-                        },
-                        {
-                            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-                            username: 'openrelayproject',
-                            credential: 'openrelayproject'
-                        }
-                    ]
-                }
-            });
+            };
+
+            const peer = id ? new Peer(id, PEER_CONFIG) : new Peer(PEER_CONFIG);
 
             this.peer = peer;
 
+            // Timeout to prevent hanging indefinitely
+            const timeout = setTimeout(() => {
+                if (!this.myId) {
+                    console.error('[PeerJS] Initialization timed out.');
+                    // Don't destroy peer yet, maybe it's just slow?
+                    // But we must reject the promise so UI doesn't hang.
+                    reject(new Error('Connection to signaling server timed out. Check your internet connection.'));
+                }
+            }, 15000); // 15s timeout
+
             peer.on('open', (peerId) => {
+                clearTimeout(timeout);
                 console.log('[PeerJS] ✓ Connected to signaling server, My ID:', peerId);
                 this.myId = peerId;
+                this.onSignalingStatus?.('connected');
                 resolve(peerId);
             });
 
@@ -88,28 +85,48 @@ class ConnectionManager {
 
             peer.on('disconnected', () => {
                 console.warn('[PeerJS] ⚠ Lost signaling server. Reconnecting...');
+                this.onSignalingStatus?.('disconnected');
                 if (peer && !peer.destroyed) {
                     peer.reconnect();
                 }
             });
 
             peer.on('error', (err: any) => {
+                clearTimeout(timeout);
                 console.error('[PeerJS] ✗ Error:', err.type, '-', err.message || err);
+
+                // If it's a fatal error or connection error, let UI know
+                if (err.type !== 'peer-unavailable') {
+                    this.onSignalingStatus?.('error', err);
+                }
 
                 // peer-unavailable = host ID not found on signaling server
                 if (err.type === 'peer-unavailable') {
                     if (this.pendingConnectReject) {
-                        this.pendingConnectReject(new Error('Host not found. Check the Room Code.'));
+                        this.pendingConnectReject(new Error('Host not found. Ensure both players used the same server (Refresh the page).'));
                         this.pendingConnectReject = null;
                     }
                     return;
                 }
 
-                // Only reject initialize promise if we haven't opened yet
+                // unavailable-id = ID taken (likely by our own ghost session from refresh)
+                if (err.type === 'unavailable-id') {
+                    // We can't recover this specific ID easily without server timeout.
+                    // But reject so UI knows.
+                    // Ideally we would try again? 
+                    // No, if ID is taken, we MUST fail or user picks new ID.
+                    // But for refresh, this is fatal unless we wait.
+                    console.error('[PeerJS] ID Taken. Ghost session?');
+                    reject(new Error('ID Taken (Ghost Session). Try again in 10s.'));
+                    return;
+                }
+
+                // If not handled above, reject normal errors if init fails
                 if (!this.myId) reject(err);
             });
 
             peer.on('close', () => {
+                clearTimeout(timeout);
                 console.log('[PeerJS] Peer closed');
             });
         });
@@ -213,6 +230,18 @@ class ConnectionManager {
 
     setConnectionHandler(callback: ConnectionCallback) {
         this.onConnection = callback;
+    }
+
+    setSignalingStatusHandler(callback: (status: 'connected' | 'disconnected' | 'reconnecting' | 'error', error?: any) => void) {
+        this.onSignalingStatus = callback;
+    }
+
+    reconnectSignaling() {
+        if (this.peer && !this.peer.destroyed) {
+            console.log('[PeerJS] Attempting manual signaling reconnect...');
+            this.onSignalingStatus?.('reconnecting');
+            this.peer.reconnect();
+        }
     }
 
     broadcast(msg: Message) {
