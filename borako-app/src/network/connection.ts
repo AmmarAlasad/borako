@@ -111,13 +111,9 @@ class ConnectionManager {
 
                 // unavailable-id = ID taken (likely by our own ghost session from refresh)
                 if (err.type === 'unavailable-id') {
-                    // We can't recover this specific ID easily without server timeout.
-                    // But reject so UI knows.
-                    // Ideally we would try again? 
-                    // No, if ID is taken, we MUST fail or user picks new ID.
-                    // But for refresh, this is fatal unless we wait.
-                    console.error('[PeerJS] ID Taken. Ghost session?');
-                    reject(new Error('ID Taken (Ghost Session). Try again in 10s.'));
+                    console.warn('[PeerJS] ID Taken. Likely ghost session. Throwing for retry.');
+                    // Rejecting with specific message allows useGame to catch and retry
+                    reject(new Error('ID-TAKEN'));
                     return;
                 }
 

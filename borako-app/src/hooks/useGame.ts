@@ -74,22 +74,36 @@ export function useGame() {
             } catch (err: any) {
                 console.error("Restoration failed:", err);
 
-                // If ID is taken (unavailable-id), wait 1s and try ONE more time
-                if (err.message && err.message.includes('ID Taken')) {
-                    console.log("Retrying ID claim in 1s...");
-                    await new Promise(r => setTimeout(r, 1000));
-                    if (cancelled) return;
-                    try {
-                        await connection.initialize(peerId);
+                // Strategy: If ID is taken (ghost session), retry aggressively
+                if (err.message === 'ID-TAKEN') {
+                    console.log("Host ID potentially locked. Starting retry sequence...");
+
+                    const retryDelays = [500, 1500, 3000]; // Increasing backoff
+                    let recovered = false;
+
+                    for (const delay of retryDelays) {
+                        if (cancelled) break;
+                        console.log(`Retrying ID claim in ${delay}ms...`);
+                        await new Promise(r => setTimeout(r, delay));
+
+                        try {
+                            await connection.initialize(peerId);
+                            recovered = true;
+                            console.log("Success! Reclaimed Host ID.");
+                            break;
+                        } catch (e) {
+                            console.warn("Retry failed, still locked...");
+                        }
+                    }
+
+                    if (recovered) {
                         if (!isRestoredHost && hostId) await connection.connect(hostId);
                         if (!cancelled) setIsConnected(true);
                         return;
-                    } catch (retryErr) {
-                        console.error("Retry failed:", retryErr);
                     }
                 }
 
-                // If reconnection fails, keep local session state visible but offline
+                // If reconnection fails after retries, keep local session state visible but offline
                 if (!cancelled) setIsConnected(false);
             }
         })();
