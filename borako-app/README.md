@@ -1,105 +1,56 @@
-# Borako - Multiplayer Card Game
+# 🃏 Borako (بوراقو) — App
 
-![Borako Game](https://img.shields.io/badge/Status-Active-green) ![Tech](https://img.shields.io/badge/Tech-React%20%7C%20Vite%20%7C%20PeerJS-blue)
+![React 19](https://img.shields.io/badge/React-19.2-blue?logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)
+![Vite](https://img.shields.io/badge/Vite-7.3-646CFF?logo=vite)
+![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-4.1-38B2AC?logo=tailwind-css)
+![PeerJS](https://img.shields.io/badge/WebRTC-PeerJS-orange)
 
-A peer-to-peer multiplayer implementation of the **Borako** card game (team variant), built with **React**, **Vite**, and **PeerJS** for serverless communication.
-
-## 🏗 Architecture
-
-The complete system architecture, including the Game Engine, State Management, and Networking layers, is documented in the PlantUML diagram below.
-
-[**View Architecture Diagram (PUML)**](./borako_architecture.puml)
-
-*You can render this file using any PlantUML viewer or the [PlantUML Text Editor](https://www.planttext.com/).*
+A modern, real-time, peer-to-peer multiplayer web application for the **Borako** card game, built with React 19, TypeScript, Vite, Tailwind CSS, and WebRTC (PeerJS).
 
 ---
 
-# 📘 Rules of Borako (English)
+## 📖 Complete Rules & Documentation
 
-## 1. Objective
-*   **Players**: 4 players (2 Teams of 2).
-*   **Deck**: 2 standard decks + 2 distinct Jokers (106 cards total).
-*   **Goal**: First team to reach **350 points** wins.
-
-## 2. Setup
-*   **Hand**: 11 cards per player.
-*   **Mour**: 11 cards reserved per team (face-down).
-*   **Areas**: Draw Pile, Discard Pile, Team Meld Areas.
-
-## 3. Gameplay
-On your turn, choose **one**:
-1.  **Draw**: Take 1 card from the deck.
-2.  **Sweep (Takweesh)**: Take the **entire** discard pile.
-    *   *Requirement*: If you sweep, you must immediately **Meld** (open new or add to existing).
-
-**End of Turn**: Discard 1 card.
-
-## 4. Melds
-*   **Runs**: 3+ consecutive cards of the same suit (e.g., 5♥ 6♥ 7♥).
-*   **Sets**: 3+ cards of same rank (Only **A, 2, 3** allowed).
-*   **Wilds**:
-    *   **2**: Can be a wild card (substitute) OR a natural 2.
-    *   **Joker**: Always wild.
-
-## 5. Scoring
-Points are calculated at the end of every round and **divided by 10**.
-
-### Meld Bonuses (for 7+ cards)
-| Meld Type | Condition | Bonus |
-| :--- | :--- | :--- |
-| **Run** | Clean (No Wilds) | **200** |
-| **Run** | Dirty (1 Wild) | **100** |
-| **Set (A, 3)** | Clean | **300** |
-| **Set (A, 3)** | Dirty (1 Wild) | **150** |
-| **Set (2s)** | Clean | **400** |
-| **Set (2s)** | Dirty (1 Wild) | **200** |
-
-### Special Rules
-*   **Going Out**: +100 bonus for emptying hand.
-*   **Mour Penalty**: -100 penalty if team never took their Mour pile.
-*   **Card Values**: (A=1.5, 2=1, 3-7=0.5, 8-K=1).
+For the full detailed rulebook, scoring formulas, and architectural guides, see:
+- [📘 Root README.md with Detailed English Rules](../README.md)
+- [📜 English Rules Reference (rules_en.md)](../rules_en.md)
+- [📜 Arabic Rules Reference (rules_ar.md)](../rules_ar.md)
+- [🏗 Architecture Diagram](./borako_architecture.puml)
 
 ---
 
-# 📘 قوانين بوراكو (العربية)
+## ⚡ Quick Rules Summary
 
-## 1. الهدف
-*   **اللاعبون**: 4 لاعبين (فريقان).
-*   **الورق**: علبتين كاملتين + جوكرين (106 ورقة).
-*   **الفوز**: الوصول إلى **350 نقطة**.
+- **Players**: 4 players (2 teams of 2).
+- **Target**: First team to reach **350 match points**.
+- **Deck**: 106 cards (2 standard decks + 2 Devil Jokers 🃏).
+- **Deal**: 11 cards per player hand + two 11-card **Mour** reserve piles (1 per team).
+- **Turn Actions**:
+  1. **Draw** 1 card from Stock OR **Sweep (*Takweesh*)** the entire discard pile (must meld immediately).
+  2. Melds: Runs (3+ same suit) or Sets (allowed **ONLY** for **A, 2, 3**).
+  3. End turn: Discard 1 card.
+- **"2" Rule**: Natural in sequence (e.g. 2♥-3♥-4♥) or Wild substitute (e.g. 5-2-7).
+- **7+ Card Bonuses**:
+  - Clean Run: **+200** | Dirty Run: **+100**
+  - Clean Set (A, 3): **+300** | Dirty Set: **+150**
+  - Clean Set (2s): **+400** | Dirty Set: **+200**
+- **Penalties & Bonuses**:
+  - Never taking Mour: **-100 round pts** (-10 team pts).
+  - Going Out: **+100 round pts** (+10 team pts).
+  - Final score: $(\text{Meld Bonuses} / 10) + \sum\text{Melded Cards} - \sum\text{Hand Cards} \pm \text{Mour/Out}$.
 
-## 2. التوزيع
-*   **اليد**: 11 ورقة لكل لاعب.
-*   **المور**: 11 ورقة احتياط لكل فريق.
+---
 
-## 3. طريقة اللعب
-في دورك، تختار **واحدًا فقط**:
-1.  **سحب**: ورقة واحدة من الكومة.
-2.  **تكويش**: أخذ كومة الرمي كاملة.
-    *   *شرط*: يجب أن تفتح (تنزل) ورق فوراً عند التكويش.
+## 🚀 Quick Start
 
-**نهاية الدور**: ارمِ ورقة واحدة.
+```bash
+# Install dependencies
+npm install
 
-## 4. الفتحات (Melds)
-*   **سلسلة (Run)**: أرقام متتالية من نفس النوع (مثال: 5♥ 6♥ 7♥).
-*   **مجموعة (Set)**: نفس الرقم (مسموح فقط لـ **A, 2, 3**).
-*   **الجوكر والبديل**:
-    *   **رقم 2**: يمكن استخدامه كـ 2 عادي أو كبديل (جوكر).
-    *   **الجوكر الأصلي**: دائماً بديل.
+# Start local dev server
+npm run dev
 
-## 5. حساب النقاط
-تُحسب النقاط وتُقسم على **10**.
-
-### مكافآت الفتحات (7 أوراق أو أكثر)
-| نوع الفتحة | الحالة | المكافأة |
-| :--- | :--- | :--- |
-| **سلسلة** | نظيفة (بدون بديل) | **200** |
-| **سلسلة** | وسخة (بديل واحد) | **100** |
-| **مجموعة (A, 3)** | نظيفة | **300** |
-| **مجموعة (A, 3)** | وسخة (بديل واحد) | **150** |
-| **مجموعة (2)** | نظيفة | **400** |
-| **مجموعة (2)** | وسخة (بديل واحد) | **200** |
-
-### قواعد خاصة
-*   **الخروج (تسكير)**: +100 نقطة إضافية.
-*   **عقوبة المور**: -100 نقطة إذا لم يأخذ الفريق المور.
+# Build production bundle
+npm run build
+```
